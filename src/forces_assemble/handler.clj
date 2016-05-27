@@ -5,14 +5,91 @@
             [ring.adapter.jetty :as jetty]
             [environ.core :refer [env]]
             [monger.core :as mg]
-            [monger.collection :as mc]))
+            [monger.collection :as mc]
+            [monger.operators :refer :all]
+            [clj-http.client :as http]))
 
-;; Vars
+;; Mongo
 (def mongo-uri
   (or (env :mongodb-mongolab-uri)
       "mongodb://localhost/test"))
 (def mongo-connection-result (mg/connect-via-uri mongo-uri))
 (def mongodb (:db mongo-connection-result))
+
+(def coll-users "users")
+(def coll-channels "channels")
+
+(defn subscribe-to-channel
+  [channel-id user-id]
+  (if-let [not-subscribed? (not (is-subscribed-to-channel channel-id user-id))]
+    (do
+      (mc/update mongodb
+                 coll-channels
+                 {:_id channel-id}
+                 {$push {:subscribers user-id}}
+                 {:upsert true})
+      (mc/update mongodb
+                 coll-users
+                 {:_id user-id}
+                 {$push {:channels channel-id}}
+                 {:upsert true}))))
+
+(defn is-subscribed-to-channel
+  [channel-id user-id]
+  (let [cursor (mc/find mongodb
+                        coll-channels
+                        {:_id channel-id :subscribers user-id})]
+    (.hasNext (.iterator cursor))))
+
+(defn refresh-user-token
+  [user-id token]
+  (mc/update mongodb
+             coll-users
+             {:_id user-id}
+             {:token token}
+             {:upsert true}))
+
+(defn get-subscribed-channels
+  [user-id]
+  (:channels (mc/find-map-by-id mongodb
+                                coll-users
+                                user-id)))
+
+(defn get-channel-subscribers
+  [channel-id]
+  (:subscribers (mc/find-map-by-id mongodb
+                                   coll-channels
+                                   channel-id)))
+
+(defn get-user-token
+  [user-id]
+  (:token (mc/find-map-by-id mongodb
+                             coll-users
+                             user-id)))
+
+(defn get-user-tokens-on-channel
+  [channel-id]
+  (map get-user-token (get-channel-subscribers channel-id)))
+
+;; HTTP
+(def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
+
+(defn build-notification
+  [title body client]
+  {:to client
+   :priority "high"
+   :notification {:title title
+                  :body body
+                  :sound "default"}})
+
+(def client-key "cpNE0uW_5sk:APA91bHmkiSpbq1s2zOKs_2hctUn7N_o_80Jt3diomlq5xClfk3XWImAkG5drS2pTA0oSLOnn4b14bUybiIL1e2uX_r6XOYm-dzIt86Y9qUw_rCowE9DfKMMyqHQa906_xNu2xInjbjh")
+
+(defn send-push-notification
+  [client]
+  (http/post firebase-send-uri
+             {:content-type :json
+              :headers {"Authorization" (str "key=" (or (env :firebase-api-key) ""))}
+              :form-params (build-notification "Hi" "You are notified" client)}))
 
 ;; Server
 

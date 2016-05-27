@@ -7,7 +7,9 @@
                  [ring/ring-jetty-adapter "1.4.0"]
                  [ring/ring-defaults "0.1.5"]
                  [com.novemberain/monger "3.0.2"]
-                 [environ "1.0.3"]]
+                 [environ "1.0.3"]
+                 [clj-http "2.2.0"]
+                 [cheshire "5.6.1"]]
   :plugins [[lein-ring "0.9.7"]]
   :ring {:handler forces-assemble.handler/app}
   :profiles
