@@ -90,11 +90,11 @@
   [event client]
   {:to client
    :priority "high"
-   :notification {:title (:title event)
-                  :body (:body event)
+   :notification {:title (or (:title event) "")
+                  :body (or (:body event) "")
                   :sound "default"}})
 
-(def client-key "cpNE0uW_5sk:APA91bHmkiSpbq1s2zOKs_2hctUn7N_o_80Jt3diomlq5xClfk3XWImAkG5drS2pTA0oSLOnn4b14bUybiIL1e2uX_r6XOYm-dzIt86Y9qUw_rCowE9DfKMMyqHQa906_xNu2xInjbjh")
+(def client-key "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 
 (defn debug-send-push-notification [client event]
   (println (str "to: " client "\n" event)))
