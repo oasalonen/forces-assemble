@@ -21,6 +21,7 @@
 
 (def coll-users "users")
 (def coll-channels "channels")
+(def coll-events "events")
 
 (defn is-subscribed-to-channel
   [channel-id user-id]
@@ -75,39 +76,64 @@
   [channel-id]
   (map get-user-token (get-channel-subscribers channel-id)))
 
+(defn add-event-to-channel-db
+  [channel-id event]
+  (mc/insert-and-return mongodb
+                        coll-events
+                        (assoc event :channel-id channel-id)))
+
 ;; HTTP
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
+(def application-json "application/json")
 
 (defn build-notification
-  [title body client]
+  [event client]
   {:to client
    :priority "high"
-   :notification {:title title
-                  :body body
+   :notification {:title (:title event)
+                  :body (:body event)
                   :sound "default"}})
 
 (def client-key "cpNE0uW_5sk:APA91bHmkiSpbq1s2zOKs_2hctUn7N_o_80Jt3diomlq5xClfk3XWImAkG5drS2pTA0oSLOnn4b14bUybiIL1e2uX_r6XOYm-dzIt86Y9qUw_rCowE9DfKMMyqHQa906_xNu2xInjbjh")
 
+(defn debug-send-push-notification [client event]
+  (println (str "to: " client "\n" event)))
+
 (defn send-push-notification
-  [client]
+  [client event]
   (http/post firebase-send-uri
              {:content-type :json
               :headers {"Authorization" (str "key=" (or (env :firebase-api-key) ""))}
-              :form-params (build-notification "Hi" "You are notified" client)}))
+              :form-params (build-notification event client)}))
+
+;; Event logic
+(defn add-event-to-channel
+  [channel-id event]
+  (let [added-event (add-event-to-channel-db channel-id event)]
+    (map #(send-push-notification % added-event) (get-user-tokens-on-channel channel-id))))
 
 ;; Server
 
 (defresource user-tokens [user-id]
   :allowed-methods [:put]
-  :available-media-types ["application/json"]
-  :known-content-type? #(check-content-type % ["application/json"])
+  :available-media-types [application-json]
+  :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :put! (fn [context]
           (refresh-user-token user-id (:token (::data context)))))
 
+(defresource channel-events [channel-id]
+  :allowed-methods [:post]
+  :available-media-types [application-json]
+  :known-content-type? #(check-content-type % [application-json])
+  :malformed? #(parse-json % ::data)
+  :post! (fn [context]
+           (add-event-to-channel channel-id (::data context))))
+
 (defroutes app-routes
   (GET "/" [] "Hello World2")
   (ANY "/users/:id/token" [id] (user-tokens id))
+  (ANY "/channels/:id/events" [id] (channel-events id))
   (route/not-found "Not Found"))
 
 (def app
