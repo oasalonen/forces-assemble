@@ -130,10 +130,19 @@
   :post! (fn [context]
            (add-event-to-channel channel-id (::data context))))
 
+(defresource channel-subscribers [channel-id]
+  :allowed-methods [:post]
+  :available-media-types [application-json]
+  :known-content-type? #(check-content-type % [application-json])
+  :malformed? #(parse-json % ::data)
+  :post! (fn [context]
+           (subscribe-to-channel channel-id (:username (::data context)))))
+
 (defroutes app-routes
   (GET "/" [] "Hello World2")
   (ANY "/users/:id/token" [id] (user-tokens id))
   (ANY "/channels/:id/events" [id] (channel-events id))
+  (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))
   (route/not-found "Not Found"))
 
 (def app
