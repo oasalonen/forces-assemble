@@ -1,6 +1,7 @@
 (ns forces-assemble.http-utils
   (:require [cheshire.core :as che]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.string :as cstr]))
 
 (defn noop [context] {})
 
@@ -15,10 +16,10 @@
 
 (defn check-content-type [context content-types]
   (if (#{:put :post} (get-in context [:request :request-method]))
-    (or
-      (some #{(get-in context [:request :headers "content-type"])}
-            content-types)
-      [false {:message "Unsupported Content-Type"}])
+    (let [content-type (cstr/trim (first (cstr/split (get-in context [:request :headers "content-type"]) #";")))]
+      (or
+       (some #{content-type} content-types)
+       [false {:message "Unsupported Content-Type"}]))
     true))
 
 (defn- is-put-post-patch [context]
