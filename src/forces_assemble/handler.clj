@@ -111,7 +111,7 @@
   (route/not-found "Not Found"))
 
 (def app
-  (wrap-defaults app-routes secure-api-defaults))
+  (wrap-defaults app-routes (secure-api-defaults :proxy true)))
 
 (def handler
   (-> app-routes
