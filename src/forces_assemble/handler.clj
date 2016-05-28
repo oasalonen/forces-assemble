@@ -101,6 +101,8 @@
 
 (defn send-push-notification
   [client event]
+  (println (str "Pushing: " client))
+  (println (str "Message: " (pr-str event)))
   (http/post firebase-send-uri
              {:content-type :json
               :headers {"Authorization" (str "key=" (or (env :firebase-api-key) ""))}
