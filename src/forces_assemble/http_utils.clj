@@ -1,0 +1,41 @@
+(ns forces-assemble.http-utils
+  (:require [cheshire.core :as che]
+            [clojure.java.io :as io]))
+
+(defn noop [context] {})
+
+(defn build-entry-url [context id]
+  (let [request (:request context)] 
+    (java.net.URL. (format "%s://%s:%s%s/%s"
+                           (name (:scheme request))
+                           (:server-name request)
+                           (:server-port request)
+                           (:uri request)
+                           (str id)))))
+
+(defn check-content-type [context content-types]
+  (if (#{:put :post} (get-in context [:request :request-method]))
+    (or
+      (some #{(get-in context [:request :headers "content-type"])}
+            content-types)
+      [false {:message "Unsupported Content-Type"}])
+    true))
+
+(defn- is-put-post-patch [context]
+  (if (#{:put :post :patch} (get-in context [:request :request-method]))
+    true))
+
+(defn- parse-json-body [body]
+  (condp instance? body
+    java.lang.String (che/parse-string body true)
+    (che/parse-stream (io/reader body) true)))
+
+(defn parse-json [context key]
+  (when (is-put-post-patch context)
+    (try
+      (let [json ((comp parse-json-body get-in) context [:request :body])]
+        [false {key json}])
+      (catch Exception e
+        (.printStackTrace e)
+        {:message (str "Exception: " (.getMessage e))}))))
+

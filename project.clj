@@ -9,7 +9,8 @@
                  [com.novemberain/monger "3.0.2"]
                  [environ "1.0.3"]
                  [clj-http "2.2.0"]
-                 [cheshire "5.6.1"]]
+                 [cheshire "5.6.1"]
+                 [liberator "0.14.1"]]
   :plugins [[lein-ring "0.9.7"]]
   :ring {:handler forces-assemble.handler/app}
   :profiles

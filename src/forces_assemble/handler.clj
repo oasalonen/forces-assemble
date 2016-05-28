@@ -7,7 +7,10 @@
             [monger.core :as mg]
             [monger.collection :as mc]
             [monger.operators :refer :all]
-            [clj-http.client :as http]))
+            [clj-http.client :as http]
+            [forces-assemble.http-utils :refer :all]
+            [liberator.core :refer [defresource]]
+            [liberator.dev :refer [wrap-trace]]))
 
 ;; Mongo
 (def mongo-uri
@@ -18,6 +21,13 @@
 
 (def coll-users "users")
 (def coll-channels "channels")
+
+(defn is-subscribed-to-channel
+  [channel-id user-id]
+  (let [cursor (mc/find mongodb
+                        coll-channels
+                        {:_id channel-id :subscribers user-id})]
+    (.hasNext (.iterator cursor))))
 
 (defn subscribe-to-channel
   [channel-id user-id]
@@ -34,12 +44,6 @@
                  {$push {:channels channel-id}}
                  {:upsert true}))))
 
-(defn is-subscribed-to-channel
-  [channel-id user-id]
-  (let [cursor (mc/find mongodb
-                        coll-channels
-                        {:_id channel-id :subscribers user-id})]
-    (.hasNext (.iterator cursor))))
 
 (defn refresh-user-token
   [user-id token]
@@ -93,13 +97,26 @@
 
 ;; Server
 
+(defresource user-tokens [user-id]
+  :allowed-methods [:put]
+  :available-media-types ["application/json"]
+  :known-content-type? #(check-content-type % ["application/json"])
+  :malformed? #(parse-json % ::data)
+  :put! (fn [context]
+          (refresh-user-token user-id (:token (::data context)))))
+
 (defroutes app-routes
-  (GET "/" [] "Hello World1")
+  (GET "/" [] "Hello World2")
+  (ANY "/users/:id/token" [id] (user-tokens id))
   (route/not-found "Not Found"))
 
 (def app
   (wrap-defaults app-routes site-defaults))
 
+(def handler
+  (-> app-routes
+      (wrap-trace :header :ui)))
+
 (defn def-server []
-  (defonce server
-    (jetty/run-jetty #'app {:port 8000 :join? false})))
+  (def server
+    (jetty/run-jetty #'handler {:port 8000 :join? false})))
