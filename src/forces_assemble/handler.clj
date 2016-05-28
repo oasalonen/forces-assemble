@@ -1,7 +1,7 @@
 (ns forces-assemble.handler
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
-            [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
+            [ring.middleware.defaults :refer [wrap-defaults secure-api-defaults site-defaults]]
             [ring.adapter.jetty :as jetty]
             [environ.core :refer [env]]
             [monger.core :as mg]
@@ -111,7 +111,7 @@
   (route/not-found "Not Found"))
 
 (def app
-  (wrap-defaults app-routes site-defaults))
+  (wrap-defaults app-routes secure-api-defaults))
 
 (def handler
   (-> app-routes
@@ -119,4 +119,10 @@
 
 (defn def-server []
   (def server
-    (jetty/run-jetty #'handler {:port 8000 :join? false})))
+    (jetty/run-jetty #'app
+                     {:port 8000
+                      :join? false
+                      :ssl? true
+                      :ssl-port 8443
+                      :keystore (str (env :home) "/jetty.keystore")
+                      :key-password (env :jetty-keystore-password)})))
