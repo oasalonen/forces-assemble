@@ -8,6 +8,7 @@
             [monger.collection :as mc]
             [monger.operators :refer :all]
             [clj-http.client :as http]
+            [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
             [forces-assemble.http-utils :refer :all]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]))
@@ -109,6 +110,22 @@
               :form-params (build-notification event client)}))
 
 ;; Event logic
+(defn add-event-to-channel-with-pool
+  [channel-id event]
+  (let [cm (make-reusable-conn-manager)
+        api-key (str "key=" (or (env :firebase-api-key) ""))
+        added-event (add-event-to-channel-db channel-id event)]
+    (map (fn [client-token]
+           (println (str "Pushing: " client-token))
+           (println (str "Message: " (pr-str event)))
+           (http/post firebase-send-uri
+                      {:content-type :json
+                       :headers {"Authorization" api-key}
+                       :form-params (build-notification event client-token)
+                       :connection-manager cm}))
+         (get-user-tokens-on-channel channel-id))
+    (shutdown-manager cm)))
+
 (defn add-event-to-channel
   [channel-id event]
   (let [added-event (add-event-to-channel-db channel-id event)]
@@ -130,7 +147,7 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (add-event-to-channel channel-id (::data context))))
+           (add-event-to-channel-with-pool channel-id (::data context))))
 
 (defresource channel-subscribers [channel-id]
   :allowed-methods [:post]
@@ -142,6 +159,7 @@
 
 (defroutes assemble-routes
   (GET "/" [] "Hello World2")
+  (GET "/hello" [] "More hellos")
   (ANY "/users/:id/token" [id] (user-tokens id))
   (ANY "/channels/:id/events" [id] (channel-events id))
   (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))
