@@ -149,9 +149,9 @@
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
            (let [event (add-event-to-channel channel-id (::data context))]
-            {:location (build-relative-url context
-                                           "/events"
-                                           (:_id event))})))
+            {:location (build-entry-url context
+                                        "/events"
+                                        (:_id event))})))
 
 (defresource channel-subscribers [channel-id]
   :allowed-methods [:post]

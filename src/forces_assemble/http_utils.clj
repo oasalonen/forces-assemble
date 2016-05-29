@@ -5,25 +5,21 @@
 
 (defn noop [context] {})
 
-(defn build-entry-url [context id]
-  (let [request (:request context)] 
-    (java.net.URL. (format "%s://%s:%s%s/%s"
-                           (name (:scheme request))
-                           (:server-name request)
-                           (:server-port request)
-                           (:uri request)
-                           (str id)))))
+(defn build-entry-url
+  ([context id] (context nil id))
+  ([context path id]
+   (let [request (:request context)] 
+     (java.net.URL. (format "%s://%s:%s%s/%s"
+                            (name (:scheme request))
+                            (:server-name request)
+                            (:server-port request)
+                            (or path (:uri request))
+                            (str id))))))
 
-(defn build-entry-relative-url [context id]
-  (.getPath (build-entry-url context id)))
-
-(defn build-relative-url [context path id]
-  (let [request (:request context)]
-    (.getPath (java.net.URL. (format "%s://%s%s/%s"
-                                     (name (:scheme request))
-                                     (:server-name request)
-                                     (str path)
-                                     (str id))))))
+(defn build-entry-relative-url
+  ([context id] (context nil id))
+  ([context path id]
+   (.getPath (build-entry-url context path id))))
 
 (defn check-content-type [context content-types]
   (if (#{:put :post} (get-in context [:request :request-method]))
