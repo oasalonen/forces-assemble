@@ -115,15 +115,15 @@
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
         api-key (str "key=" (or (env :firebase-api-key) ""))
         added-event (add-event-to-channel-db channel-id event)]
-    (map (fn [client-token]
-           (println (str "Pushing: " client-token))
-           (println (str "Message: " (pr-str event)))
-           (http/post firebase-send-uri
-                      {:content-type :json
-                       :headers {"Authorization" api-key}
-                       :form-params (build-notification event client-token)
-                       :connection-manager cm}))
-         (get-user-tokens-on-channel channel-id))
+    (doall (map (fn [client-token]
+                  (println (str "Pushing: " client-token))
+                  (println (str "Message: " (pr-str event)))
+                  (http/post firebase-send-uri
+                             {:content-type :json
+                              :headers {"Authorization" api-key}
+                              :form-params (build-notification event client-token)
+                              :connection-manager cm}))
+                (get-user-tokens-on-channel channel-id)))
     (shutdown-manager cm)))
 
 (defn add-event-to-channel
