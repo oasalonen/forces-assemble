@@ -74,7 +74,7 @@
 
 (defn get-user-tokens-on-channel
   [channel-id]
-  (map get-user-token (get-channel-subscribers channel-id)))
+  (distinct (map get-user-token (get-channel-subscribers channel-id))))
 
 (defn add-event-to-channel-db
   [channel-id event]
