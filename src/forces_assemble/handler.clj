@@ -112,7 +112,7 @@
 ;; Event logic
 (defn add-event-to-channel-with-pool
   [channel-id event]
-  (let [cm (make-reusable-conn-manager)
+  (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
         api-key (str "key=" (or (env :firebase-api-key) ""))
         added-event (add-event-to-channel-db channel-id event)]
     (map (fn [client-token]
