@@ -85,7 +85,7 @@
 
 ;; HTTP
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
-(def application-json "application/json")
+(def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 
 (defn build-notification
   [event client]
@@ -95,22 +95,8 @@
                   :body (or (:body event) "")
                   :sound "default"}})
 
-(def client-key "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
-
-(defn debug-send-push-notification [client event]
-  (println (str "to: " client "\n" event)))
-
-(defn send-push-notification
-  [client event]
-  (println (str "Pushing: " client))
-  (println (str "Message: " (pr-str event)))
-  (http/post firebase-send-uri
-             {:content-type :json
-              :headers {"Authorization" (str "key=" (or (env :firebase-api-key) ""))}
-              :form-params (build-notification event client)}))
-
 ;; Event logic
-(defn add-event-to-channel-with-pool
+(defn add-event-to-channel
   [channel-id event]
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
         api-key (str "key=" (or (env :firebase-api-key) ""))
@@ -126,12 +112,8 @@
                 (get-user-tokens-on-channel channel-id)))
     (shutdown-manager cm)))
 
-(defn add-event-to-channel
-  [channel-id event]
-  (let [added-event (add-event-to-channel-db channel-id event)]
-    (map #(send-push-notification % added-event) (get-user-tokens-on-channel channel-id))))
-
 ;; Server
+(def application-json "application/json")
 
 (defresource user-tokens [user-id]
   :allowed-methods [:put]
@@ -147,7 +129,7 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (add-event-to-channel-with-pool channel-id (::data context))))
+           (add-event-to-channel channel-id (::data context))))
 
 (defresource channel-subscribers [channel-id]
   :allowed-methods [:post]
