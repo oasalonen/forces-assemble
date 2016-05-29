@@ -6,6 +6,7 @@
             [environ.core :refer [env]]
             [monger.core :as mg]
             [monger.collection :as mc]
+            [monger.util :as mu]
             [monger.operators :refer :all]
             [clj-http.client :as http]
             [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
@@ -79,9 +80,20 @@
 
 (defn add-event-to-channel-db
   [channel-id event]
-  (mc/insert-and-return mongodb
-                        coll-events
-                        (assoc event :channel-id channel-id)))
+  (let [event-id (mu/object-id)]
+    (mc/insert-and-return mongodb
+                          coll-events
+                          (assoc event :_id event-id :channel-id channel-id))))
+
+(defn get-event
+  [event-id]
+  (mc/find-map-by-id mongodb
+                     coll-events
+                     (mu/object-id event-id)))
+
+(defn clean-id
+  [data]
+  (assoc data :_id (str (:_id data))))
 
 ;; HTTP
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
@@ -110,7 +122,8 @@
                               :form-params (build-notification event client-token)
                               :connection-manager cm}))
                 (get-user-tokens-on-channel channel-id)))
-    (shutdown-manager cm)))
+    (shutdown-manager cm)
+    added-event))
 
 ;; Server
 (def application-json "application/json")
@@ -123,13 +136,22 @@
   :put! (fn [context]
           (refresh-user-token user-id (:token (::data context)))))
 
+(defresource user-channels [user-id]
+  :allowed-methods [:get]
+  :available-media-types [application-json]
+  :handle-ok (fn [context]
+               (get-subscribed-channels user-id)))
+
 (defresource channel-events [channel-id]
   :allowed-methods [:post]
   :available-media-types [application-json]
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (add-event-to-channel channel-id (::data context))))
+           (let [event (add-event-to-channel channel-id (::data context))]
+            {:location (build-relative-url context
+                                           "/events"
+                                           (:_id event))})))
 
 (defresource channel-subscribers [channel-id]
   :allowed-methods [:post]
@@ -139,12 +161,23 @@
   :post! (fn [context]
            (subscribe-to-channel channel-id (:username (::data context)))))
 
+(defresource events [event-id]
+  :allowed-methods [:get]
+  :available-media-types [application-json]
+  :exists? (fn [context]
+             (if-let [event (get-event event-id)]
+               {::data event}
+               false))
+  :handle-ok #(clean-id (::data %)))
+
 (defroutes assemble-routes
   (GET "/" [] "Hello World2")
   (GET "/hello" [] "More hellos")
   (ANY "/users/:id/token" [id] (user-tokens id))
+  (ANY "/users/:id/channels" [id] (user-channels id))
   (ANY "/channels/:id/events" [id] (channel-events id))
   (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))
+  (ANY "/events/:id" [id] (events id))
   (route/not-found "Not Found"))
 
 (def dev-app

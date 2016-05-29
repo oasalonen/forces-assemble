@@ -14,6 +14,17 @@
                            (:uri request)
                            (str id)))))
 
+(defn build-entry-relative-url [context id]
+  (.getPath (build-entry-url context id)))
+
+(defn build-relative-url [context path id]
+  (let [request (:request context)]
+    (.getPath (java.net.URL. (format "%s://%s%s/%s"
+                                     (name (:scheme request))
+                                     (:server-name request)
+                                     (str path)
+                                     (str id))))))
+
 (defn check-content-type [context content-types]
   (if (#{:put :post} (get-in context [:request :request-method]))
     (let [content-type (cstr/trim (first (cstr/split (get-in context [:request :headers "content-type"]) #";")))]
