@@ -130,7 +130,8 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (add-event-to-channel channel-id (::data context))))
+           (add-event-to-channel channel-id (::data context))
+           nil))
 
 (defresource channel-subscribers [channel-id]
   :allowed-methods [:post]
