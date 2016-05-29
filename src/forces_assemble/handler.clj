@@ -140,26 +140,30 @@
   :post! (fn [context]
            (subscribe-to-channel channel-id (:username (::data context)))))
 
-(defroutes app-routes
+(defroutes assemble-routes
   (GET "/" [] "Hello World2")
   (ANY "/users/:id/token" [id] (user-tokens id))
   (ANY "/channels/:id/events" [id] (channel-events id))
   (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))
   (route/not-found "Not Found"))
 
-(def app
-  (wrap-defaults app-routes (secure-api-defaults :proxy true)))
+(def dev-app
+  (wrap-trace (wrap-defaults assemble-routes (secure-api-defaults :proxy true)) :header :ui))
 
-(def handler
-  (-> app-routes
-      (wrap-trace :header :ui)))
+(def app
+  (wrap-defaults assemble-routes (secure-api-defaults :proxy true)))
 
 (defn def-server []
   (def server
-    (jetty/run-jetty #'app
+    (jetty/run-jetty #'dev-app
                      {:port 8000
                       :join? false
                       :ssl? true
                       :ssl-port 8443
                       :keystore (str (env :home) "/jetty.keystore")
                       :key-password (env :jetty-keystore-password)})))
+
+(defn restart-server []
+  (.stop server)
+  (def-server)
+  (.start server))
