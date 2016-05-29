@@ -106,7 +106,7 @@
   (http/post firebase-send-uri
              {:content-type :json
               :headers {"Authorization" (str "key=" (or (env :firebase-api-key) ""))}
-              :form-params (build-notification event client-key)}))
+              :form-params (build-notification event client)}))
 
 ;; Event logic
 (defn add-event-to-channel
