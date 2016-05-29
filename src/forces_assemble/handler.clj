@@ -122,8 +122,7 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :put! (fn [context]
-          (refresh-user-token user-id (:token (::data context)))
-          {}))
+          (refresh-user-token user-id (:token (::data context)))))
 
 (defresource channel-events [channel-id]
   :allowed-methods [:post]
@@ -131,8 +130,7 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (add-event-to-channel channel-id (::data context))
-           {}))
+           (add-event-to-channel channel-id (::data context))))
 
 (defresource channel-subscribers [channel-id]
   :allowed-methods [:post]
@@ -140,8 +138,7 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (subscribe-to-channel channel-id (:username (::data context)))
-           {}))
+           (subscribe-to-channel channel-id (:username (::data context)))))
 
 (defroutes assemble-routes
   (GET "/" [] "Hello World2")
