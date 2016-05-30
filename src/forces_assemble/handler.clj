@@ -34,6 +34,15 @@
   [data]
   (dissoc (assoc data :id (str (:_id data))) :_id))
 
+(defn import-event
+  [event]
+  (apply dissoc event (vec (clojure.set/difference (set (keys event)) #{:id
+                                                                        :channel-id
+                                                                        :author
+                                                                        :title
+                                                                        :body
+                                                                        :data}))))
+
 (defn is-subscribed-to-channel
   [channel-id user-id]
   (let [cursor (mc/find mongodb
@@ -92,7 +101,7 @@
   (let [event-id (mu/object-id)]
     (export-data (mc/insert-and-return mongodb
                                        coll-events
-                                       (assoc event :_id event-id :channel-id channel-id)))))
+                                       (assoc (import-event event) :_id event-id :channel-id channel-id)))))
 
 (defn get-event
   [event-id]
