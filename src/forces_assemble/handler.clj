@@ -81,19 +81,24 @@
 (defn add-event-to-channel-db
   [channel-id event]
   (let [event-id (mu/object-id)]
-    (mc/insert-and-return mongodb
-                          coll-events
-                          (assoc event :_id event-id :channel-id channel-id))))
+    (export-data (mc/insert-and-return mongodb
+                                       coll-events
+                                       (assoc event :_id event-id :channel-id channel-id)))))
 
 (defn get-event
   [event-id]
-  (mc/find-map-by-id mongodb
-                     coll-events
-                     (mu/object-id event-id)))
+  (export-data (mc/find-map-by-id mongodb
+                                  coll-events
+                                  (mu/object-id event-id))))
 
-(defn clean-id
+(defn import-data
   [data]
-  (assoc data :_id (str (:_id data))))
+  (if-let [id (:id data)]
+    (assoc (dissoc data :id) :_id id)))
+
+(defn export-data
+  [data]
+  (dissoc (assoc data :id (str (:_id data))) :_id))
 
 ;; HTTP
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
@@ -148,10 +153,13 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (let [event (add-event-to-channel channel-id (::data context))]
+           (let [event (add-event-to-channel channel-id (::data context))
+                 event-id (:id event)]
             {:location (build-entry-url context
                                         "/events"
-                                        (:_id event))})))
+                                        event-id)
+             ::created {:id event-id}}))
+  :handle-created #(::created %))
 
 (defresource channel-subscribers [channel-id]
   :allowed-methods [:post]
@@ -168,7 +176,7 @@
              (if-let [event (get-event event-id)]
                {::data event}
                false))
-  :handle-ok #(clean-id (::data %)))
+  :handle-ok #(::data %))
 
 (defroutes assemble-routes
   (GET "/" [] "Hello World2")
