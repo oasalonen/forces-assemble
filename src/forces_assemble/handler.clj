@@ -25,6 +25,15 @@
 (def coll-channels "channels")
 (def coll-events "events")
 
+(defn import-data
+  [data]
+  (if-let [id (:id data)]
+    (assoc (dissoc data :id) :_id id)))
+
+(defn export-data
+  [data]
+  (dissoc (assoc data :id (str (:_id data))) :_id))
+
 (defn is-subscribed-to-channel
   [channel-id user-id]
   (let [cursor (mc/find mongodb
@@ -90,15 +99,6 @@
   (export-data (mc/find-map-by-id mongodb
                                   coll-events
                                   (mu/object-id event-id))))
-
-(defn import-data
-  [data]
-  (if-let [id (:id data)]
-    (assoc (dissoc data :id) :_id id)))
-
-(defn export-data
-  [data]
-  (dissoc (assoc data :id (str (:_id data))) :_id))
 
 ;; HTTP
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
