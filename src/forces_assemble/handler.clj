@@ -122,9 +122,9 @@
   [event client]
   {:to client
    :priority "high"
+   :data (or (:data event) {})
    :notification {:title (or (:title event) "")
                   :body (or (:body event) "")
-                  :data (or (:data event) {})
                   :sound "default"}})
 
 (defn add-event-to-channel
