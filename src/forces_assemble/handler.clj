@@ -11,6 +11,7 @@
             [clj-http.client :as http]
             [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
             [forces-assemble.http-utils :refer :all]
+            [forces-assemble.auth :as auth]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]))
 
@@ -142,7 +143,21 @@
 ;; Server
 (def application-json "application/json")
 
-(defresource user-tokens [user-id]
+(def authorization-required
+  {:authorized? (fn [context]
+                  (try (let [token (auth/authenticate-token (get-authorization-token context))]
+                         (if (nil? token)
+                           false
+                           [true {::auth token}]))
+                       (catch Exception e [false {::exception e}])))
+   :handle-unauthorized (fn [context]
+                          (str "Authorization error: " (::exception context)))})
+
+(def no-authorization-required {})
+
+(def protected-resource authorization-required)
+
+(defresource user-tokens [user-id] protected-resource
   :allowed-methods [:put]
   :available-media-types [application-json]
   :known-content-type? #(check-content-type % [application-json])
@@ -150,13 +165,13 @@
   :put! (fn [context]
           (refresh-user-token user-id (:token (::data context)))))
 
-(defresource user-channels [user-id]
+(defresource user-channels [user-id] protected-resource
   :allowed-methods [:get]
   :available-media-types [application-json]
   :handle-ok (fn [context]
                (get-subscribed-channels user-id)))
 
-(defresource channel-events [channel-id]
+(defresource channel-events [channel-id] protected-resource
   :allowed-methods [:post]
   :available-media-types [application-json]
   :known-content-type? #(check-content-type % [application-json])
@@ -170,7 +185,7 @@
              ::created {:id event-id}}))
   :handle-created #(::created %))
 
-(defresource channel-subscribers [channel-id]
+(defresource channel-subscribers [channel-id] protected-resource
   :allowed-methods [:post]
   :available-media-types [application-json]
   :known-content-type? #(check-content-type % [application-json])
@@ -178,7 +193,7 @@
   :post! (fn [context]
            (subscribe-to-channel channel-id (:username (::data context)))))
 
-(defresource events [event-id]
+(defresource events [event-id] protected-resource
   :allowed-methods [:get]
   :available-media-types [application-json]
   :exists? (fn [context]
@@ -197,11 +212,11 @@
   (ANY "/events/:id" [id] (events id))
   (route/not-found "Not Found"))
 
-(def dev-app
-  (wrap-trace (wrap-defaults assemble-routes (secure-api-defaults :proxy true)) :header :ui))
-
 (def app
   (wrap-defaults assemble-routes (secure-api-defaults :proxy true)))
+
+(def dev-app
+  (wrap-trace app :header :ui))
 
 (defn def-server []
   (def server

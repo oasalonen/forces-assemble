@@ -47,3 +47,5 @@
         (.printStackTrace e)
         {:message (str "Exception: " (.getMessage e))}))))
 
+(defn get-authorization-token [context]
+  (get-in context [:request :headers "authorization"]))
