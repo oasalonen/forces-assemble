@@ -34,6 +34,9 @@
                                      (.getBytes)
                                      (io/input-stream))))))
 
+(defonce testing (let [b (auth-config)]
+                   (throw (Exception. (str "BUILD: " b)))))
+
 (defonce fbapp (FirebaseApp/initializeApp (create-firebase-options)))
 
 (defn authenticate-token
