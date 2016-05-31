@@ -6,9 +6,11 @@
   (reduce #(conj %1 (first %2)) [] (filter #(nil? (second %)) (map #(identity [% (env %)]) required-keys))))
 
 (defn configuration-ok?
-  [required-keys]
+  [required-keys source-namespace]
   (let [missing (missing-config-vars required-keys)]
                          (if (empty? missing)
                            true
-                           (throw (Exception. (str "Following required variables have not been defined: "
+                           (throw (Exception. (str "Missing config variables: "
+                                                   source-namespace
+                                                   " requires the following config vars: "
                                                    missing))))))

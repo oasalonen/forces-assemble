@@ -11,7 +11,7 @@
                   :firebase-auth-private-key
                   :firebase-auth-client-email
                   :firebase-auth-client-id])
-(def configuration-ok? (config/configuration-ok? config-keys))
+(def configuration-ok? (config/configuration-ok? config-keys *ns*))
 (def auth-config-path "auth-config.json")
 (def auth-config-key-prefix "firebase-auth-")
 
