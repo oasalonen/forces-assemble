@@ -34,8 +34,7 @@
                                      (.getBytes)
                                      (io/input-stream))))))
 
-(comment (defonce testing (let [b (auth-config)]
-                    (throw (Exception. (str "BUILD: " b))))))
+(defonce testing (throw (Exception. (str "BUILD: " (env :firebase-auth-private-key)))))
 
 (defonce fbapp (FirebaseApp/initializeApp (create-firebase-options)))
 
