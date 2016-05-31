@@ -12,14 +12,15 @@
             [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
             [forces-assemble.http-utils :refer :all]
             [forces-assemble.auth :as auth]
+            [forces-assemble.config :as config]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]))
 
 ;; Mongo
-(def mongo-uri
-  (or (env :mongodb-mongolab-uri)
-      "mongodb://localhost/test"))
-(def mongo-connection-result (mg/connect-via-uri mongo-uri))
+(def mongo-config-keys [:mongodb-mongolab-uri])
+(def mongo-configuration-ok? (config/configuration-ok? mongo-config-keys *ns*))
+
+(def mongo-connection-result (mg/connect-via-uri (env :mongodb-mongolab-uri)))
 (def mongodb (:db mongo-connection-result))
 
 (def coll-users "users")
@@ -111,6 +112,9 @@
                                   (mu/object-id event-id))))
 
 ;; HTTP
+(def http-config-keys [:firebase-api-key])
+(def http-configuration-ok? (config/configuration-ok? http-config-keys *ns*))
+
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
 (def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 
@@ -122,7 +126,6 @@
                   :body (or (:body event) "")
                   :sound "default"}})
 
-;; Event logic
 (defn add-event-to-channel
   [channel-id event]
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
@@ -220,13 +223,14 @@
 
 (defn def-server []
   (def server
-    (jetty/run-jetty #'dev-app
-                     {:port 8000
-                      :join? false
-                      :ssl? true
-                      :ssl-port 8443
-                      :keystore (str (env :home) "/jetty.keystore")
-                      :key-password (env :jetty-keystore-password)})))
+    (do (config/configuration-ok? [:jetty-keystore-password] *ns*)
+        (jetty/run-jetty #'dev-app
+                         {:port 8000
+                          :join? false
+                          :ssl? true
+                          :ssl-port 8443
+                          :keystore (str (env :home) "/jetty.keystore")
+                          :key-password (env :jetty-keystore-password)}))))
 
 (defn restart-server []
   (.stop server)
