@@ -69,11 +69,16 @@
 
 (def protected-resource authorization-required)
 
+(defn is-request-from-user?
+  [context expected-user-id]
+  (= expected-user-id (.getUid (::auth context))))
+
 (defresource user-tokens [user-id] protected-resource
   :allowed-methods [:put]
   :available-media-types [application-json]
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
+  :allowed? #(is-request-from-user? % user-id)  
   :put! (fn [context]
           (db/refresh-user-token user-id (:token (::data context)))))
 
@@ -102,8 +107,9 @@
   :available-media-types [application-json]
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
+  :allowed? #(is-request-from-user? % (get-in % [::data :user-id]))
   :post! (fn [context]
-           (db/subscribe-to-channel channel-id (:user-id (::data context)))))
+           (db/subscribe-to-channel channel-id (get-in context [::data :user-id]))))
 
 (defresource events [event-id] protected-resource
   :allowed-methods [:get]
