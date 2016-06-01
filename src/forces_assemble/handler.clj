@@ -4,10 +4,6 @@
             [ring.middleware.defaults :refer [wrap-defaults secure-api-defaults site-defaults]]
             [ring.adapter.jetty :as jetty]
             [environ.core :refer [env]]
-            [monger.core :as mg]
-            [monger.collection :as mc]
-            [monger.util :as mu]
-            [monger.operators :refer :all]
             [clj-http.client :as http]
             [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
             [forces-assemble.http-utils :refer :all]
@@ -57,10 +53,10 @@
 
 (def authorization-required
   {:authorized? (fn [context]
-                  (try (let [token (auth/authenticate-token (get-authorization-token context))]
-                         (if (nil? token)
+                  (try (let [auth-user (auth/authenticate-token (get-authorization-token context))]
+                         (if (nil? auth-user)
                            false
-                           [true {::auth token}]))
+                           [true {::auth auth-user}]))
                        (catch Exception e [false {::exception e}])))
    :handle-unauthorized (fn [context]
                           (str "Authorization error: " (::exception context)))})
@@ -71,7 +67,7 @@
 
 (defn is-request-from-user?
   [context expected-user-id]
-  (= expected-user-id (.getUid (::auth context))))
+  (= expected-user-id (get-in context [::auth :user-id])))
 
 (defresource user-tokens [user-id] protected-resource
   :allowed-methods [:put]
@@ -94,7 +90,10 @@
   :known-content-type? #(check-content-type % [application-json])
   :malformed? #(parse-json % ::data)
   :post! (fn [context]
-           (let [event (add-event-to-channel channel-id (::data context))
+           (let [event-with-author (assoc (::data context)
+                                          :author
+                                          {:user-id (get-in context [::auth :user-id])})
+                 event (add-event-to-channel channel-id event-with-author)
                  event-id (:id event)]
             {:location (build-entry-url context
                                         "/events"

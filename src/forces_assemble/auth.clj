@@ -36,6 +36,12 @@
 
 (defonce fbapp (FirebaseApp/initializeApp (create-firebase-options)))
 
+(defn- get-authenticated-user
+  [token-string fbtoken]
+  {:token token-string
+   :user-id (.getUid fbtoken)
+   :name (.getName fbtoken)})
+
 (defn authenticate-token
   [token]
   (if-not token
@@ -53,5 +59,5 @@
         (throw (Exception. "Authentication service timeout. Please try again later."))
         (if (instance? Exception result)
           (throw result)
-          result)))))
+          (get-authenticated-user token result))))))
 
