@@ -49,7 +49,6 @@
     added-event))
 
 ;; Server
-(def application-json "application/json")
 
 (def authorization-required
   {:authorized? (fn [context]
@@ -65,30 +64,37 @@
 
 (def protected-resource authorization-required)
 
+(def application-json "application/json")
+
+(def json-producer-resource
+  {:available-media-types [application-json]})
+
+(def json-consumer-resource
+  {:known-content-type? #(check-content-type % [application-json])
+   :malformed? #(parse-json % ::data)})
+
+(def json-resource (merge json-producer-resource json-consumer-resource))
+
 (defn is-request-from-user?
   [context expected-user-id]
   (= expected-user-id (get-in context [::auth :user-id])))
 
-(defresource user-tokens [user-id] protected-resource
+(defresource user-tokens [user-id]
+  (merge protected-resource json-resource)
   :allowed-methods [:put]
-  :available-media-types [application-json]
-  :known-content-type? #(check-content-type % [application-json])
-  :malformed? #(parse-json % ::data)
   :allowed? #(is-request-from-user? % user-id)  
   :put! (fn [context]
           (db/refresh-user-token user-id (:token (::data context)))))
 
-(defresource user-channels [user-id] protected-resource
+(defresource user-channels [user-id]
+  (merge protected-resource json-producer-resource)
   :allowed-methods [:get]
-  :available-media-types [application-json]
   :handle-ok (fn [context]
                (db/get-subscribed-channels user-id)))
 
-(defresource channel-events [channel-id] protected-resource
+(defresource channel-events [channel-id]
+  (merge protected-resource json-resource)
   :allowed-methods [:post]
-  :available-media-types [application-json]
-  :known-content-type? #(check-content-type % [application-json])
-  :malformed? #(parse-json % ::data)
   :post! (fn [context]
            (let [event-with-author (assoc (::data context)
                                           :author
@@ -101,23 +107,28 @@
              ::created {:id event-id}}))
   :handle-created #(::created %))
 
-(defresource channel-subscribers [channel-id] protected-resource
+(defresource channel-subscribers [channel-id]
+  (merge protected-resource json-resource)
   :allowed-methods [:post]
-  :available-media-types [application-json]
-  :known-content-type? #(check-content-type % [application-json])
-  :malformed? #(parse-json % ::data)
   :allowed? #(is-request-from-user? % (get-in % [::data :user-id]))
   :post! (fn [context]
            (db/subscribe-to-channel channel-id (get-in context [::data :user-id]))))
 
-(defresource events [event-id] protected-resource
+(defresource events [event-id]
+  (merge protected-resource json-producer-resource)
   :allowed-methods [:get]
-  :available-media-types [application-json]
   :exists? (fn [context]
              (if-let [event (db/get-event event-id)]
                {::data event}
                false))
   :handle-ok #(::data %))
+
+(defresource event-participants [event-id]
+  (merge protected-resource json-resource)
+  :allowed-methods [:post]
+  :allowed? #(is-request-from-user? % (get-in % [::data :user-id]))
+  :post! (fn [context]
+           (db/add-event-participant event-id (::auth context))))
 
 (defroutes assemble-routes
   (GET "/" [] "Hello World2")
@@ -127,6 +138,7 @@
   (ANY "/channels/:id/events" [id] (channel-events id))
   (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))
   (ANY "/events/:id" [id] (events id))
+  (ANY "/events/:id/participants" [id] (event-participants id))
   (route/not-found "Not Found"))
 
 (def app

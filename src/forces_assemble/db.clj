@@ -28,12 +28,13 @@
 
 (defn- import-event
   [event]
-  (apply dissoc event (vec (clojure.set/difference (set (keys event)) #{:id
-                                                                        :channel-id
-                                                                        :author
-                                                                        :title
-                                                                        :body
-                                                                        :data}))))
+  (select-keys event [:id
+                      :channel-id
+                      :author
+                      :title
+                      :body
+                      :data
+                      :participant]))
 
 (defn- is-subscribed-to-channel
   [channel-id user-id]
@@ -44,7 +45,7 @@
 
 (defn subscribe-to-channel
   [channel-id user-id]
-  (if-let [not-subscribed? (not (is-subscribed-to-channel channel-id user-id))]
+  (when (not (is-subscribed-to-channel channel-id user-id))
     (do
       (mc/update mongodb
                  coll-channels
@@ -100,3 +101,15 @@
   (export-data (mc/find-map-by-id mongodb
                                   coll-events
                                   (mu/object-id event-id))))
+
+(defn get-event-participants
+  [event-id]
+  (map #(select-keys % [:user-id :name]) (:participants (get-event event-id))))
+
+(defn add-event-participant
+  [event-id user]
+  (when (not-any? #(= (:user-id %) (:user-id user)) (get-event-participants event-id))
+    (mc/update mongodb
+               coll-events
+               {:_id (mu/object-id event-id)}
+               {$push {:participants (select-keys user [:user-id :name])}})))
