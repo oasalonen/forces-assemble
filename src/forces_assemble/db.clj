@@ -1,5 +1,6 @@
-(ns forces-assemble.db
-  (:require [forces-assemble.config :as config]
+(ns focrces-assemble.db
+  (:require [clojure.set]
+            [forces-assemble.config :as config]
             [environ.core :refer [env]]
             [monger.core :as mg]
             [monger.collection :as mc]
