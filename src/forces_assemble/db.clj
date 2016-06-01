@@ -1,4 +1,4 @@
-(ns focrces-assemble.db
+(ns forces-assemble.db
   (:require [clojure.set]
             [forces-assemble.config :as config]
             [environ.core :refer [env]]
