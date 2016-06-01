@@ -47,17 +47,27 @@
   [channel-id user-id]
   (when (not (is-subscribed-to-channel channel-id user-id))
     (do
-      (mc/update mongodb
-                 coll-channels
-                 {:_id channel-id}
-                 {$push {:subscribers user-id}}
-                 {:upsert true})
-      (mc/update mongodb
-                 coll-users
-                 {:_id user-id}
-                 {$push {:channels channel-id}}
-                 {:upsert true}))))
+      (mc/update-by-id mongodb
+                       coll-channels
+                       channel-id
+                       {$push {:subscribers user-id}}
+                       {:upsert true})
+      (mc/update-by-id mongodb
+                       coll-users
+                       user-id
+                       {$push {:channels channel-id}}
+                       {:upsert true}))))
 
+(defn unsubscribe-from-channel
+  [channel-id user-id]
+  (mc/update-by-id mongodb
+                   coll-channels
+                   channel-id
+                   {$pull {:subscribers user-id}})
+  (mc/update-by-id mongodb
+                   coll-users
+                   user-id
+                   {$pull {:channels channel-id}}))
 
 (defn refresh-user-notification-token
   [user-id token]

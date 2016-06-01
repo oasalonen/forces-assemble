@@ -115,6 +115,13 @@
   :post! (fn [context]
            (db/subscribe-to-channel channel-id (get-in context [::data :user-id]))))
 
+(defresource channel-subscriber-user [channel-id user-id]
+  protected-resource
+  :allowed-methods [:delete]
+  :available-media-types ["text/plain"]
+  :allowed? #(is-request-from-user? % user-id)
+  :delete! (fn [context] (db/unsubscribe-from-channel channel-id user-id)))
+
 (defresource events [event-id]
   (merge protected-resource json-producer-resource)
   :allowed-methods [:get]
@@ -138,6 +145,7 @@
   (ANY "/users/:id/channels" [id] (user-channels id))
   (ANY "/channels/:id/events" [id] (channel-events id))
   (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))
+  (ANY "/channels/:channel-id/subscribers/:user-id" [channel-id user-id] (channel-subscriber-user channel-id user-id))
   (ANY "/events/:id" [id] (events id))
   (ANY "/events/:id/participants" [id] (event-participants id))
   (route/not-found "Not Found"))
