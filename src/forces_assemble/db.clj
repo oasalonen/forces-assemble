@@ -64,7 +64,7 @@
   (mc/update mongodb
              coll-users
              {:_id user-id}
-             {:notification-token token}
+             {$set {:notification-token token}}
              {:upsert true}))
 
 (defn get-subscribed-channels
