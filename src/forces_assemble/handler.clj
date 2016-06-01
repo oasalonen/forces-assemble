@@ -44,7 +44,7 @@
                               :headers {"Authorization" api-key}
                               :form-params (build-notification event client-token)
                               :connection-manager cm}))
-                (db/get-user-tokens-on-channel channel-id)))
+                (db/get-user-notification-tokens-on-channel channel-id)))
     (shutdown-manager cm)
     added-event))
 
@@ -79,12 +79,12 @@
   [context expected-user-id]
   (= expected-user-id (get-in context [::auth :user-id])))
 
-(defresource user-tokens [user-id]
+(defresource user-notification-token [user-id]
   (merge protected-resource json-resource)
   :allowed-methods [:put]
   :allowed? #(is-request-from-user? % user-id)  
   :put! (fn [context]
-          (db/refresh-user-token user-id (:token (::data context)))))
+          (db/refresh-user-notification-token user-id (:token (::data context)))))
 
 (defresource user-channels [user-id]
   (merge protected-resource json-producer-resource)
@@ -133,7 +133,7 @@
 (defroutes assemble-routes
   (GET "/" [] "Hello World2")
   (GET "/hello" [] "More hellos")
-  (ANY "/users/:id/token" [id] (user-tokens id))
+  (ANY "/users/:id/notification-token" [id] (user-notification-token id))
   (ANY "/users/:id/channels" [id] (user-channels id))
   (ANY "/channels/:id/events" [id] (channel-events id))
   (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))

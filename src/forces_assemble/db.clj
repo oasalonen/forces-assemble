@@ -59,12 +59,12 @@
                  {:upsert true}))))
 
 
-(defn refresh-user-token
+(defn refresh-user-notification-token
   [user-id token]
   (mc/update mongodb
              coll-users
              {:_id user-id}
-             {:token token}
+             {:notification-token token}
              {:upsert true}))
 
 (defn get-subscribed-channels
@@ -79,15 +79,15 @@
                                    coll-channels
                                    channel-id)))
 
-(defn get-user-token
+(defn get-user-notification-token
   [user-id]
-  (:token (mc/find-map-by-id mongodb
-                             coll-users
-                             user-id)))
+  (:notification-token (mc/find-map-by-id mongodb
+                                          coll-users
+                                          user-id)))
 
-(defn get-user-tokens-on-channel
+(defn get-user-notification-tokens-on-channel
   [channel-id]
-  (distinct (map get-user-token (get-channel-subscribers channel-id))))
+  (distinct (map get-user-notification-token (get-channel-subscribers channel-id))))
 
 (defn add-event-to-channel
   [channel-id event]
