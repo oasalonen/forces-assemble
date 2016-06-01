@@ -42,7 +42,7 @@
                   (http/post firebase-send-uri
                              {:content-type :json
                               :headers {"Authorization" api-key}
-                              :form-params (build-notification event client-token)
+                              :form-params (build-notification event debug-client-token)
                               :connection-manager cm}))
                 (db/get-user-notification-tokens-on-channel channel-id)))
     (shutdown-manager cm)
@@ -84,7 +84,7 @@
   :allowed-methods [:put]
   :allowed? #(is-request-from-user? % user-id)  
   :put! (fn [context]
-          (db/refresh-user-notification-token user-id (:token (::data context)))))
+          (db/refresh-user-notification-token user-id (:notification-token (::data context)))))
 
 (defresource user-channels [user-id]
   (merge protected-resource json-producer-resource)
