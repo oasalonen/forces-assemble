@@ -26,6 +26,7 @@
   [event client]
   {:to client
    :priority "high"
+   :collapse_key (:id event)
    :data (or (:data event) {})
    :notification {:title (or (:title event) "")
                   :body (or (:body event) "")
@@ -42,7 +43,7 @@
                   (http/post firebase-send-uri
                              {:content-type :json
                               :headers {"Authorization" api-key}
-                              :form-params (build-notification event debug-client-token)
+                              :form-params (build-notification event client-token)
                               :connection-manager cm}))
                 (db/get-user-notification-tokens-on-channel channel-id)))
     (shutdown-manager cm)
