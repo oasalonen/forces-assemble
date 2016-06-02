@@ -1,5 +1,6 @@
 (ns forces-assemble.handler
-  (:require [compojure.core :refer :all]
+  (:require [clojure.java.io :as io]
+            [compojure.core :refer :all]
             [compojure.route :as route]
             [ring.middleware.defaults :refer [wrap-defaults secure-api-defaults site-defaults]]
             [ring.adapter.jetty :as jetty]
@@ -138,16 +139,21 @@
   :post! (fn [context]
            (db/add-event-participant event-id (::auth context))))
 
+(defn api
+  [uri]
+  (str "/api/v1" uri))
+
 (defroutes assemble-routes
-  (GET "/" [] "Hello World2")
-  (GET "/hello" [] "More hellos")
-  (ANY "/users/:id/notification-token" [id] (user-notification-token id))
-  (ANY "/users/:id/channels" [id] (user-channels id))
-  (ANY "/channels/:id/events" [id] (channel-events id))
-  (ANY "/channels/:id/subscribers" [id] (channel-subscribers id))
-  (ANY "/channels/:channel-id/subscribers/:user-id" [channel-id user-id] (channel-subscriber-user channel-id user-id))
-  (ANY "/events/:id" [id] (events id))
-  (ANY "/events/:id/participants" [id] (event-participants id))
+  (GET "/" [] (io/resource "index.html"))
+  (GET "/custom-account.html" [] (io/resource "custom-account.html"))
+  (GET "/google-account.html" [] (io/resource "google-account.html"))
+  (ANY (api "/users/:id/notification-token") [id] (user-notification-token id))
+  (ANY (api "/users/:id/channels") [id] (user-channels id))
+  (ANY (api "/channels/:id/events") [id] (channel-events id))
+  (ANY (api "/channels/:id/subscribers") [id] (channel-subscribers id))
+  (ANY (api "/channels/:channel-id/subscribers/:user-id") [channel-id user-id] (channel-subscriber-user channel-id user-id))
+  (ANY (api "/events/:id") [id] (events id))
+  (ANY (api "/events/:id/participants") [id] (event-participants id))
   (route/not-found "Not Found"))
 
 (def app
