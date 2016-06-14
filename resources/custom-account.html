@@ -1,6 +1,7 @@
 <html>
 <header>
 <script src="https://www.gstatic.com/firebasejs/live/3.0/firebase.js"></script>
+<script src="/api.js"></script>
 <script type="text/javascript">
     /**
      * Handles the sign in button press.
@@ -66,6 +67,19 @@
       });
       // [END createwithemail]
     }
+
+    function subscribeToChannel() {
+      var channelId = document.getElementById('channel').value;
+      api.subscribeToChannel(channelId);
+    }
+
+    function sendEventToChannel() {
+      var channelId = document.getElementById('channel').value;
+      var title = document.getElementById('title').value;
+      var body = document.getElementById('body').value;
+      api.sendEventToChannel(channelId, title, body);
+    }
+  
     /**
      * Handles registering callbacks for the auth status.
      *
@@ -131,22 +145,20 @@
     }
     window.onload = function() {
       document.getElementById('init').addEventListener('click', initApp, false);
+      document.getElementById('subscribe').addEventListener('click', subscribeToChannel, false);
+      document.getElementById('send-event').addEventListener('click', sendEventToChannel, false);
     };
   </script>
 </head>
 <body>
-<div class="demo-layout mdl-layout mdl-js-layout mdl-layout--fixed-header">
+<div>
 
   <!-- Header section containing title -->
-  <header class="mdl-layout__header mdl-color-text--white mdl-color--light-blue-700">
-    <div class="mdl-cell mdl-cell--12-col mdl-cell--12-col-tablet mdl-grid">
-      <div class="mdl-layout__header-row mdl-cell mdl-cell--12-col mdl-cell--12-col-tablet mdl-cell--8-col-desktop">
-        <a href="/"><h3>Firebase Authentication</h3></a>
-      </div>
-    </div>
+  <header>
+    <a href="/"><h3>Home</h3></a>
   </header>
 
-  <main class="mdl-layout__content mdl-color--grey-100">
+  <main>
     <div>
           <h2>Set API key</h2>
           <p>Enter an API key to initialize the app</p>
@@ -155,13 +167,12 @@
           <button enabled id="init" name="signin">Initialize with key</button>
     </div>
 
-    <div>
+    <div hidden id="auth-section">
       <!-- Container for the demo -->
-      <div hidden id="auth-section">
         <div>
-          <h2 class="mdl-card__title-text">Firebase Email &amp; Password Authentication</h2>
+          <h2 >Firebase Email &amp; Password Authentication</h2>
           <p>Enter an email and password below and either sign in to an existing account or sign up</p>
-
+          
           <input style="display:inline;width:auto;" type="text" id="email" name="email" placeholder="Email"/>
           &nbsp;&nbsp;&nbsp;
           <input style="display:inline;width:auto;" type="password" id="password" name="password" placeholder="Password"/>
@@ -169,7 +180,7 @@
           <button disabled id="quickstart-sign-in" name="signin">Sign In</button>
           &nbsp;&nbsp;&nbsp;
           <button id="quickstart-sign-up" name="signup">Sign Up</button>
-
+          
           <!-- Container where we'll display the user details -->
           <div>
             Firebase sign-in status: <span id="quickstart-sign-in-status">Unknown</span>
@@ -177,8 +188,20 @@
             <pre><code id="quickstart-account-details">null</code></pre>
           </div>
         </div>
-      </div>
 
+        <div>
+          <h2>Channel</h2>
+          <input style="display:inline;width:auto;" type="text" id="channel" name="channel" placeholder="Channel"/>
+          <br/><br/>
+          <button enabled id="subscribe" name="subscribe">Subscribe to channel</button>
+        </div>
+        <div>
+          <h2>Event</h2>
+          <input style="display:inline;width:auto;" type="text" id="title" name="title" placeholder="Message title"/>
+          <input style="display:inline;width:auto;" type="text" id="body" name="body" placeholder="Message body"/>
+          <br/><br/>
+          <button enabled id="send-event" name="send-event">Send event</button>
+        </div>
     </div>
   </main>
 </div>

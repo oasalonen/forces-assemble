@@ -145,6 +145,7 @@
 
 (defroutes assemble-routes
   (GET "/" [] (io/resource "index.html"))
+  (GET "/api.js" [] (io/resource "api.js"))
   (GET "/custom-account.html" [] (io/resource "custom-account.html"))
   (GET "/google-account.html" [] (io/resource "google-account.html"))
   (ANY (api "/users/:id/notification-token") [id] (user-notification-token id))
