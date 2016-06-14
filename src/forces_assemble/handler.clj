@@ -4,6 +4,7 @@
             [compojure.route :as route]
             [ring.middleware.defaults :refer [wrap-defaults secure-api-defaults site-defaults]]
             [ring.adapter.jetty :as jetty]
+            [ring.logger :as logger]
             [environ.core :refer [env]]
             [clj-http.client :as http]
             [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
@@ -17,11 +18,14 @@
 
 
 ;; HTTP
-(def http-config-keys [:firebase-api-key])
+(def http-config-keys [:firebase-api-key
+                       :papertrail-api-token])
 (def http-configuration-ok? (config/configuration-ok? http-config-keys *ns*))
 
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
 (def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
+(def papertrail-events-uri "https://papertrailapp.com/api/v1/events/search.json")
+
 
 (defn build-notification
   [event client]
@@ -49,6 +53,11 @@
                 (db/get-user-notification-tokens-on-channel channel-id)))
     (shutdown-manager cm)
     added-event))
+
+(defn get-server-logs
+  []
+  (http/get papertrail-events-uri
+            {:headers {"X-Papertrail-Token" (env :papertrail-api-token)}}))
 
 ;; Server
 
@@ -139,6 +148,11 @@
   :post! (fn [context]
            (db/add-event-participant event-id (::auth context))))
 
+(defresource server-logs []
+  :available-media-types ["text/html"]
+  :allowed-methods [:get]
+  :handle-ok (fn [context]
+               (:body (get-server-logs))))
 (defn api
   [uri]
   (str "/api/v1" uri))
@@ -148,6 +162,7 @@
   (GET "/api.js" [] (io/resource "api.js"))
   (GET "/custom-account.html" [] (io/resource "custom-account.html"))
   (GET "/google-account.html" [] (io/resource "google-account.html"))
+  (ANY "/logs.html" [] (server-logs))
   (ANY (api "/users/:id/notification-token") [id] (user-notification-token id))
   (ANY (api "/users/:id/channels") [id] (user-channels id))
   (ANY (api "/channels/:id/events") [id] (channel-events id))
@@ -160,8 +175,11 @@
 (def app
   (wrap-defaults assemble-routes (secure-api-defaults :proxy true)))
 
+(def logged-app
+  (logger/wrap-with-logger app))
+
 (def dev-app
-  (wrap-trace app :header :ui))
+  (wrap-trace logged-app :header :ui))
 
 (defn def-server []
   (def server

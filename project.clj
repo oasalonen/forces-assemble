@@ -6,6 +6,7 @@
                  [compojure "1.4.0"]
                  [ring/ring-jetty-adapter "1.4.0"]
                  [ring/ring-defaults "0.1.5"]
+                 [ring-logger "0.7.6"]
                  [com.novemberain/monger "3.0.2"]
                  [environ "1.0.3"]
                  [clj-http "2.2.0"]
