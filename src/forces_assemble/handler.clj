@@ -13,11 +13,13 @@
             [forces-assemble.config :as config]
             [forces-assemble.db :as db]
             [liberator.core :refer [defresource]]
-            [liberator.dev :refer [wrap-trace]]))
+            [liberator.dev :refer [wrap-trace]]
+            [java-time :as jt]))
 
 
 
 ;; HTTP
+(def api-uri-prefix "/api/v1")
 (def http-config-keys [:firebase-api-key
                        :papertrail-api-token])
 (def http-configuration-ok? (config/configuration-ok? http-config-keys *ns*))
@@ -55,9 +57,14 @@
     added-event))
 
 (defn get-server-logs
-  []
-  (http/get papertrail-events-uri
-            {:headers {"X-Papertrail-Token" (env :papertrail-api-token)}}))
+  [& {:keys [query min-time] :or {query nil min-time nil}}]
+  (let [query (or query api-uri-prefix)
+        min-time (or min-time (.getEpochSecond (jt/minus (jt/instant) (jt/hours 1))))]
+    (println (str "Server log query: " query " after " min-time))
+    (http/get papertrail-events-uri
+              {:headers {"X-Papertrail-Token" (env :papertrail-api-token)}
+               :query-params {"q" query
+                              "min_time" min-time}})))
 
 ;; Server
 
@@ -149,20 +156,22 @@
            (db/add-event-participant event-id (::auth context))))
 
 (defresource server-logs []
-  :available-media-types ["text/html"]
+  :available-media-types [application-json "text/html"]
   :allowed-methods [:get]
   :handle-ok (fn [context]
-               (:body (get-server-logs))))
+               (let [query (get-in context [:request :params :query])
+                     min-time (get-in context [:request :params :min_time])]
+                 (:body (get-server-logs :query query :min-time min-time)))))
+
 (defn api
   [uri]
-  (str "/api/v1" uri))
+  (str api-uri-prefix uri))
 
 (defroutes assemble-routes
   (GET "/" [] (io/resource "index.html"))
   (GET "/api.js" [] (io/resource "api.js"))
   (GET "/custom-account.html" [] (io/resource "custom-account.html"))
   (GET "/google-account.html" [] (io/resource "google-account.html"))
-  (ANY "/logs.html" [] (server-logs))
   (ANY (api "/users/:id/notification-token") [id] (user-notification-token id))
   (ANY (api "/users/:id/channels") [id] (user-channels id))
   (ANY (api "/channels/:id/events") [id] (channel-events id))
@@ -170,13 +179,15 @@
   (ANY (api "/channels/:channel-id/subscribers/:user-id") [channel-id user-id] (channel-subscriber-user channel-id user-id))
   (ANY (api "/events/:id") [id] (events id))
   (ANY (api "/events/:id/participants") [id] (event-participants id))
+  (ANY (api "/logs") [] (server-logs))
   (route/not-found "Not Found"))
 
 (def app
-  (wrap-defaults assemble-routes (secure-api-defaults :proxy true)))
+  (wrap-defaults assemble-routes (assoc secure-api-defaults :proxy true)))
 
 (def logged-app
-  (logger/wrap-with-logger app))
+  (logger/wrap-with-logger app {:printer :no-color
+                                :timing false}))
 
 (def dev-app
   (wrap-trace logged-app :header :ui))
