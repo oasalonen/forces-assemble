@@ -1,5 +1,6 @@
 (ns forces-assemble.handler
   (:require [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [compojure.core :refer :all]
             [compojure.route :as route]
             [ring.middleware.defaults :refer [wrap-defaults secure-api-defaults site-defaults]]
@@ -58,9 +59,9 @@
 
 (defn get-server-logs
   [& {:keys [query min-time] :or {query nil min-time nil}}]
-  (let [query (or query api-uri-prefix)
+  (let [query (or query "")
         min-time (or min-time (.getEpochSecond (jt/minus (jt/instant) (jt/hours 1))))]
-    (println (str "Server log query: " query " after " min-time))
+    (log/info (str "Querying server logs for \"" query "\" occurring after " min-time))
     (http/get papertrail-events-uri
               {:headers {"X-Papertrail-Token" (env :papertrail-api-token)}
                :query-params {"q" query
