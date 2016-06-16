@@ -33,6 +33,10 @@
 (def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 (def papertrail-events-uri "https://papertrailapp.com/api/v1/events/search.json")
 
+(defn api
+  [uri]
+  (str api-uri-prefix uri))
+
 (defn build-notification
   [event client]
   {:to client
@@ -206,10 +210,6 @@
                    text-html :>> (fn [_] (logs-to-html events query))
                    application-json :>> (fn [_] (identity events))
                    nil))))
-
-(defn api
-  [uri]
-  (str api-uri-prefix uri))
 
 (defroutes assemble-routes
   (GET "/" [] (io/resource "index.html"))
