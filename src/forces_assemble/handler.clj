@@ -1,11 +1,13 @@
 (ns forces-assemble.handler
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [clojure.string :as cstr]
             [compojure.core :refer :all]
             [compojure.route :as route]
             [ring.middleware.defaults :refer [wrap-defaults secure-api-defaults site-defaults]]
             [ring.adapter.jetty :as jetty]
             [ring.logger :as logger]
+            [ring.logger.protocols :as logger-protocols]
             [environ.core :refer [env]]
             [clj-http.client :as http]
             [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
@@ -13,13 +15,13 @@
             [forces-assemble.auth :as auth]
             [forces-assemble.config :as config]
             [forces-assemble.db :as db]
+            [forces-assemble.logging :as logging]
+            [forces-assemble.context :refer [request-id]]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]
             [java-time :as jt]
             [java-time.format :as jt-format]
             [clj-uuid :as uuid]))
-
-
 
 ;; HTTP
 (def api-uri-prefix "/api/v1")
@@ -30,8 +32,6 @@
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
 (def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 (def papertrail-events-uri "https://papertrailapp.com/api/v1/events/search.json")
-
-(def ^:dynamic request-id nil)
 
 (defn build-notification
   [event client]
@@ -49,8 +49,8 @@
         api-key (str "key=" (or (env :firebase-api-key) ""))
         added-event (db/add-event-to-channel channel-id event)]
     (doall (map (fn [client-token]
-                  (println (str "Pushing: " client-token))
-                  (println (str "Message: " (pr-str event)))
+                  (log/info (str "Pushing: " client-token))
+                  (log/info (str "Message: " (pr-str event)))
                   (http/post firebase-send-uri
                              {:content-type :json
                               :headers {"Authorization" api-key}
@@ -174,7 +174,6 @@
   :available-media-types [application-json text-html]
   :allowed-methods [:get]
   :handle-ok (fn [context]
-               (println (str "ID " request-id))
                (let [query (get-in context [:request :params :query])
                      min-time (get-in context [:request :params :min_time])
                      events (:body (get-server-logs :query query :min-time min-time))]
@@ -210,11 +209,10 @@
       (handler request))))
 
 (def app
-  (wrap-defaults (wrap-request-id assemble-routes) (assoc secure-api-defaults :proxy true)))
+  (wrap-defaults assemble-routes (assoc secure-api-defaults :proxy true)))
 
 (def logged-app
-  (logger/wrap-with-logger app {:printer :no-color
-                                :timing false}))
+  (wrap-request-id (logging/wrap-ring-logger app)))
 
 (def dev-app
   (wrap-trace logged-app :header :ui))
