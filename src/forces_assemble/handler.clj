@@ -72,13 +72,24 @@
 
 (defn logs-to-html
   [logs]
-  (let [time-formatter (jt-format/predefined-formatters "iso-offset-date-time")]
-    (apply str (map (fn [event]
-                      (str "<p>" (jt/format (jt/instant time-formatter (:received_at event))) " - "
-                           "<b>" (:severity event) ":</b> "
-                           (:message event)
-                           "</p>"))
-                    (:events (parse-json-body logs))))))
+  (let [time-formatter (jt-format/predefined-formatters "iso-offset-date-time")
+        log-event-format (slurp (io/resource "log-event-format.html"))
+        log-page-format (slurp (io/resource "log-page-format.html"))
+        events (apply str (map (fn [event]
+                                 (let [message (:message event)
+                                       id (second (re-find #"^(\[[a-fA-F\d-]*\])" message))
+                                       error (second (re-find #"([Ee]rror|[Ee]xception)" message))
+                                       status (second (re-find #"Status: (\d{3})" message))]
+                                   (format log-event-format
+                                           (jt/format (jt/instant time-formatter (:received_at event)))
+                                           (or id "")
+                                           (cond
+                                               (some? error) "error"
+                                               (and status (< 400(Integer. status))) "error"
+                                               :else "ok")
+                                           (if id (cstr/replace-first message id "") message))))
+                               (:events (parse-json-body logs))))]
+    (format log-page-format events)))
 
 ;; Server
 
@@ -193,6 +204,7 @@
   (GET "/api.js" [] (io/resource "api.js"))
   (GET "/custom-account.html" [] (io/resource "custom-account.html"))
   (GET "/google-account.html" [] (io/resource "google-account.html"))
+  (GET "/style.css" [] (io/resource "style.css"))
   (ANY (api "/users/:id/notification-token") [id] (user-notification-token id))
   (ANY (api "/users/:id/channels") [id] (user-channels id))
   (ANY (api "/channels/:id/events") [id] (channel-events id))

@@ -1,0 +1,26 @@
+table.log {
+    font-family: monospace;
+}
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+td {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+span.log-timestamp {
+    font-size: large;
+    font-weight: bold;
+}
+span.log-request-id {
+    font-size: large;
+    font-weight: normal;
+}
+span.log-message {
+    display: inline-block;
+    margin-top: 2px;
+    font-size:medium;
+}
+span.error {
+    background-color: #ff9999
+}
