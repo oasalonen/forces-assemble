@@ -61,20 +61,29 @@
     added-event))
 
 (defn get-server-logs
-  [& {:keys [query min-time] :or {query nil min-time nil}}]
+  [& {:keys [query min-time min-id] :or {query nil min-time nil min-id nil}}]
   (let [query (str "program:(app/web.1)" (when query (str " " query)))
         min-time (or min-time (.getEpochSecond (jt/minus (jt/instant) (jt/hours 1))))]
-    (log/info (str "Querying server logs for \"" query "\" occurring after " min-time))
+    (log/info (str "Querying server logs for \"" query "\" occurring after " min-time " with min-id " min-id))
     (http/get papertrail-events-uri
               {:headers {"X-Papertrail-Token" (env :papertrail-api-token)}
-               :query-params {"q" query
-                              "min_time" min-time}})))
+               :query-params (merge {"tail" false
+                                     "q" query}
+                                    (if min-id
+                                      {"min_id" min-id}
+                                      {"min_time" min-time}))})))
+
+(defn logs-uri
+  [min-id query]
+  (api (str "/logs?min_id=" min-id (when query (str "&query=" query)))))
 
 (defn logs-to-html
-  [logs]
+  [logs-body query]
   (let [time-formatter (jt-format/predefined-formatters "iso-offset-date-time")
         log-event-format (slurp (io/resource "log-event-format.html"))
         log-page-format (slurp (io/resource "log-page-format.html"))
+        body (parse-json-body logs-body)
+        max-id (:max_id body)
         events (apply str (map (fn [event]
                                  (let [message (:message event)
                                        id (second (re-find #"^(\[[a-fA-F\d-]*\])" message))
@@ -85,11 +94,13 @@
                                            (or id "")
                                            (cond
                                                (some? error) "error"
-                                               (and status (< 400(Integer. status))) "error"
+                                               (and status (>= (Integer. status) 400)) "error"
                                                :else "ok")
                                            (if id (cstr/replace-first message id "") message))))
-                               (:events (parse-json-body logs))))]
-    (format log-page-format events)))
+                               (:events body)))]
+    (format log-page-format
+            events
+            (logs-uri max-id query))))
 
 ;; Server
 
@@ -189,9 +200,10 @@
   :handle-ok (fn [context]
                (let [query (get-in context [:request :params :query])
                      min-time (get-in context [:request :params :min_time])
-                     events (:body (get-server-logs :query query :min-time min-time))]
+                     min-id (get-in context [:request :params :min_id])
+                     events (:body (get-server-logs :query query :min-time min-time :min-id min-id))]
                  (condp = (get-in context [:representation :media-type])
-                   text-html :>> (fn [_] (logs-to-html events))
+                   text-html :>> (fn [_] (logs-to-html events query))
                    application-json :>> (fn [_] (identity events))
                    nil))))
 
