@@ -16,7 +16,8 @@
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]
             [java-time :as jt]
-            [java-time.format :as jt-format]))
+            [java-time.format :as jt-format]
+            [clj-uuid :as uuid]))
 
 
 
@@ -30,6 +31,7 @@
 (def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 (def papertrail-events-uri "https://papertrailapp.com/api/v1/events/search.json")
 
+(def ^:dynamic request-id nil)
 
 (defn build-notification
   [event client]
@@ -80,6 +82,9 @@
 
 ;; Server
 
+(def application-json "application/json")
+(def text-html "text/html")
+
 (def authorization-required
   {:authorized? (fn [context]
                   (try (let [auth-user (auth/authenticate-token (get-authorization-token context))]
@@ -93,9 +98,6 @@
 (def no-authorization-required {})
 
 (def protected-resource authorization-required)
-
-(def application-json "application/json")
-(def text-html "text/html")
 
 (def json-producer-resource
   {:available-media-types [application-json]})
@@ -172,6 +174,7 @@
   :available-media-types [application-json text-html]
   :allowed-methods [:get]
   :handle-ok (fn [context]
+               (println (str "ID " request-id))
                (let [query (get-in context [:request :params :query])
                      min-time (get-in context [:request :params :min_time])
                      events (:body (get-server-logs :query query :min-time min-time))]
@@ -199,8 +202,15 @@
   (ANY (api "/logs") [] (server-logs))
   (route/not-found "Not Found"))
 
+(defn wrap-request-id
+  [handler]
+  (fn [request]
+    (binding [request-id (or (get-in request [:headers "x-request-id"])
+                             (str (uuid/v1)))]
+      (handler request))))
+
 (def app
-  (wrap-defaults assemble-routes (assoc secure-api-defaults :proxy true)))
+  (wrap-defaults (wrap-request-id assemble-routes) (assoc secure-api-defaults :proxy true)))
 
 (def logged-app
   (logger/wrap-with-logger app {:printer :no-color
