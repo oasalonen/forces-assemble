@@ -181,7 +181,7 @@
                      events (:body (get-server-logs :query query :min-time min-time))]
                  (condp = (get-in context [:representation :media-type])
                    text-html :>> (fn [_] (logs-to-html events))
-                   application-json :>> events
+                   application-json :>> (fn [_] (identity events))
                    nil))))
 
 (defn api
