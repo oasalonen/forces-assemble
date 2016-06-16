@@ -15,7 +15,8 @@
             [forces-assemble.db :as db]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]
-            [java-time :as jt]))
+            [java-time :as jt]
+            [java-time.format :as jt-format]))
 
 
 
@@ -59,13 +60,23 @@
 
 (defn get-server-logs
   [& {:keys [query min-time] :or {query nil min-time nil}}]
-  (let [query (or query "")
+  (let [query (str "program:(app/web.1)" (when query (str " " query)))
         min-time (or min-time (.getEpochSecond (jt/minus (jt/instant) (jt/hours 1))))]
     (log/info (str "Querying server logs for \"" query "\" occurring after " min-time))
     (http/get papertrail-events-uri
               {:headers {"X-Papertrail-Token" (env :papertrail-api-token)}
                :query-params {"q" query
                               "min_time" min-time}})))
+
+(defn logs-to-html
+  [logs]
+  (let [time-formatter (jt-format/predefined-formatters "iso-offset-date-time")]
+    (apply str (map (fn [event]
+                      (str "<p>" (jt/format (jt/instant time-formatter (:received_at event))) " - "
+                           "<b>" (:severity event) ":</b> "
+                           (:message event)
+                           "</p>"))
+                    (:events (parse-json-body logs))))))
 
 ;; Server
 
@@ -84,6 +95,7 @@
 (def protected-resource authorization-required)
 
 (def application-json "application/json")
+(def text-html "text/html")
 
 (def json-producer-resource
   {:available-media-types [application-json]})
@@ -157,12 +169,16 @@
            (db/add-event-participant event-id (::auth context))))
 
 (defresource server-logs []
-  :available-media-types [application-json "text/html"]
+  :available-media-types [application-json text-html]
   :allowed-methods [:get]
   :handle-ok (fn [context]
                (let [query (get-in context [:request :params :query])
-                     min-time (get-in context [:request :params :min_time])]
-                 (:body (get-server-logs :query query :min-time min-time)))))
+                     min-time (get-in context [:request :params :min_time])
+                     events (:body (get-server-logs :query query :min-time min-time))]
+                 (condp = (get-in context [:representation :media-type])
+                   text-html :>> (fn [_] (logs-to-html events))
+                   application-json :>> events
+                   nil))))
 
 (defn api
   [uri]

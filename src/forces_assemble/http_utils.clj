@@ -33,12 +33,13 @@
   (if (#{:put :post :patch} (get-in context [:request :request-method]))
     true))
 
-(defn- parse-json-body [body]
+(defn parse-json-body [body]
   (condp instance? body
     java.lang.String (che/parse-string body true)
     (che/parse-stream (io/reader body) true)))
 
-(defn parse-json [context key]
+(defn parse-json
+  [context key]
   (when (is-put-post-patch context)
     (try
       (let [json ((comp parse-json-body get-in) context [:request :body])]
