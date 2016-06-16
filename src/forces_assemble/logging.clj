@@ -16,7 +16,11 @@
           true)
         (write!
           [logger level throwable message]
-          (println (str (cstr/upper-case (name level)) ": [" request-id "] " message)))))))
+          (let [output (str "[" request-id "] " message)]
+            (if (or throwable (some level [:error :warn]))
+              (binding [*out* *err*]
+                (println (str output " - " throwable)))
+              (println output))))))))
 
 (alter-var-root (var log/*logger-factory*)
                 (constantly custom-logging-factory))
@@ -29,7 +33,7 @@
         :trace nil
         :debug nil
         ;else
-        (log/info message)))))
+        (log/log level throwable message)))))
 
 (defn wrap-ring-logger
   [handler]

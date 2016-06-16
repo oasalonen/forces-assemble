@@ -91,7 +91,9 @@
                          (if (nil? auth-user)
                            false
                            [true {::auth auth-user}]))
-                       (catch Exception e [false {::exception e}])))
+                       (catch Exception e
+                         (log/warn e "Authorization error")
+                         [false {::exception e}])))
    :handle-unauthorized (fn [context]
                           (str "Authorization error: " (::exception context)))})
 
