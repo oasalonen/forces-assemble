@@ -1,0 +1,97 @@
+<html>
+  <head>
+    <title>forces-assemble API documentation</title>
+  </head>
+  <body>
+    
+    <h1>API documentation</h1>
+    
+    <h2>Debugging</h2>
+    
+    <h3>Server logs</h3>
+    <p>If you want to check what's going on in the backend, you can view the server logs at <a href="https://forces-assemble.herokuapp.com/api/v1/logs">https://forces-assemble.herokuapp.com/api/v1/logs</a>. You can also query the logs for specific search terms by using the query GET parameter. For example, to search for all instances of 404 instances you can do <a href="https://forces-assemble.herokuapp.com/api/v1/logs?query=404">this</a>.</p>
+    
+    <h3>Request traces</h3>
+    <p>You can get detailed traces of how your request was handled by examining the X-Liberator-Request response headers for every call to an endpoint. If you prefer to get a nicer graphical representation of the request trace, go to <a href="https://forces-assemble.herokuapp.com/x-liberator/requests/">https://forces-assemble.herokuapp.com/x-liberator/requests/</a></p>
+    
+    <h2>Common info</h2>
+    <h3>Base URL</h3>
+    <p>All API endpoints use the base URL</p>
+    <pre>https://forces-assemble.herokuapp.com/api/v1</pre>
+    
+    <h3>Headers</h3>
+    <p>All endpoints require authentication. To do so, add an authorization header with the value of the Firebase token you get when successfully logging a user in. Example auth header:</p>
+    <pre>Authorization: sdc7y834fdj8deWDCfweuD2937d-563rsddDD...</pre>
+    <p>All endpoints that receive or output data do so via JSON in the HTTP request/response body. When sending JSON to the backend, make sure to set the Content-Type header appropriately:
+      <pre>Content-Type: application/json</pre>
+    </p>
+    
+    <h2>Endpoints</h2>
+    
+    <h3>/users/[user-id]/notification-token</h3>
+    <h4>PUT</h4>
+    <div>
+      <p>Set or refresh the push notification token of a user. The user-id in the URL should be the user's Firebase UUID. The request body should contain a JSON payload with the notification-token parameter set to the most recent token that the push notification system has assigned to the user, for example:
+        <pre>{"notification-token": "abcdefg12345"}</pre>
+      </p>
+    </div>
+    
+    <h3>/users/[user-id]/channels</h3>
+    <h4>GET</h4>
+    <div>
+      <p>Get all the channels that a user is subscribed to. The user-id in the URL should be the user's Firebase UUID.The response is a list of channel IDs. Example response body:
+        <pre>["ch1", "ch2", "ch3"]</pre></p>
+    </div>
+    
+    <h3>/channels/[channel-id]/events</h3>
+    <h4>POST</h4>
+    <div>
+      <p>Add a new event to a channel. This event will be sent as a push notification to all channel subscribers. The event should at a minimum contain a body and a title attribute. You can also add a data payload to the event with custom data, although you should keep the size of the whole event at a maximum of 3kB. The response body will contain the ID of the generated event.
+      </p>
+      <h5>Request body example</h5>
+      <pre>{
+        "title": "Hello",
+        "body": "World!",
+        "data": {
+        "custom-param1": 123,
+        "something-else": "foo"
+        }
+        }</pre>
+      <h5>Response body example</h5>
+      <pre>{"id": "123"}</pre>
+    </div>
+    
+    <h3>/channels/[channel-id]/subscribers</h3>
+    <h4>POST</h4>
+    <div>
+      <p>Subscribe a user to a channel. The ID of the user that should be added to the list of subscribers is sent in the request body, for example:
+        <pre>{"user-id": "abc"}</pre>
+      </p>
+    </div>
+    
+    <h3>/channels/[channel-id]/subscribers/[user-id]</h3>
+    <h4>DELETE</h4>
+    <div>
+      <p>Unsubscribe a user from a channel.</p>
+    </div>
+    
+    <h3>/events/[event-id]</h3>
+    <h4>GET</h4>
+    <div>
+      <p>Fetch data about an event.</p>
+      <h5>Response body example</h5>
+      <pre>
+        {
+        "id": "abcd123",
+        "channel-id": "def123",
+        "title": "hello",
+        "body": "world",
+        "data": {
+        "foo": "bar"
+        }
+        }
+      </pre>
+    </div>
+    
+  </body>
+</html>

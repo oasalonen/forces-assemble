@@ -6,6 +6,14 @@
 
 <body>
 <h1>forces-assemble backend</h1>
+
+<p>This backend supports custom clients that wish to implement the following basic behavior.</p>
+<ul>
+<li>Users subscribe to various "channels".</li>
+<li>A user wishing to notify other users pushes an event on a channel.</li>
+<li>All subscribers to that channel receive a push notification with that event.</li>
+</ul>
+
 <a name="test-web-clients"></a><h2>Test web clients</h2>
 <p>
   <a href="/custom-account.html">Test client with password sign-in</a>
@@ -15,76 +23,13 @@
 </p>
 
 
-<h2>API reference</h2>
-TODO
+<h2><a href="api.html">API reference</a></h2>
 
-<h2>Firebase integration instructions</h2>
-<p>
-  This service uses Firebase for authentication and push notifications. Follow the platform specific instructions below to setup and use the Firebase SDK. You may find the <a href="https://firebase.google.com/docs/reference/">Firebase API reference</a> useful when using the SDK on clients to implement authentication or push notifications.
-</p>
+Description of how to integrate with the backend endpoints.
 
-<h3>Web</h3>
+<h2><a href="firebase.html">Firebase integration instructions</a></h2>
 
-<h4>Setup</h4>
-<p>
-  None
-</p>
-
-<h4>Authentication</h4>
-<p>
-  Follow the Firebase instructions to setup either <a href="https://firebase.google.com/docs/auth/web/password-auth">password</a> or <a href="https://firebase.google.com/docs/auth/web/google-signin">Google</a> authentication. If you decide to use password authentication, you should at a minimum force the user to set a display name for their profile so other users can recognize them. Updating the user profile is described <a href="https://firebase.google.com/docs/auth/web/manage-users#update_a_users_profile">here</a>. You could potentially set the email as a display name. You can check the <a href="#test-web-clients">test web clients</a> above for examples how to authenticate using either password sign-up/in or alternatively using Google sign-in.
-</p>
-<p>
-  Once you have authenticated the user, you need to extract the authentication token from the response. You need to provide this token as part of the Authentication header for all API endpoints.
-</p>
-
-<h4>Push notifications</h4>
-<p>
-  Not available
-</p>
-
-
-
-<h3>Android</h3>
-<h4>Setup</h4>
-<p>
-  Follow the <a href="https://firebase.google.com/docs/cloud-messaging/android/client">Android client setup instructions</a>. You will need the google-services.json file from Firebase. You can get it by providing your app package name to the backend admin, who will use the name to generate and send the file to you.
-</p>
-
-<h4>Authentication</h4>
-<p>
-  Follow the Firebase instructions to setup either <a href="https://firebase.google.com/docs/auth/android/password-auth">password</a> or <a href="https://firebase.google.com/docs/auth/android/google-signin">Google</a> authentication. If you decide to use Google authentication, you need to <a href="https://developers.google.com/android/guides/client-auth">extract the SHA1 of your signing certificate</a> and provide to the backend admin to enable it. If you decide to use password authentication, you should at a minimum force the user to set a display name for their profile so other users can recognize them. Updating the user profile is described <a href="https://firebase.google.com/docs/auth/android/manage-users#update_a_users_profile">here</a>. You could potentially set the email as a display name.
-</p>
-<p>
-  Once you have authenticated the user, you need to extract the authentication token from the response. You need to provide this token as part of the Authentication header for all API endpoints.
-</p>
-
-<h4>Push notifications</h4>
-<p>
-  In order for the backend to send you notifications, you will need to refresh your notification token using the /users/{user-id}/notification-token endpoint whenever it changes. Follow the instructions for Android <a href="https://firebase.google.com/docs/cloud-messaging/downstream#receiving-messages-on-an-android-client-app">here</a>. It describes how you can capture the notification token on your app and then describes how you can configure your client to intercept notification messages that the backend sends to you through the push notification system.
-</p>
-
-
-
-<h3>iOS</h3>
-
-<h4>Setup</h4>
-<p>
-  Follow the <a href="https://firebase.google.com/docs/cloud-messaging/ios/client">iOS client setup instructions</a>. You will need the GoogleService-Info.plist file from Firebase. You can get it by providing your iOS bundle ID to the backend admin, who will use the ID to generate and send the file to you. You will also need to <a href="https://firebase.google.com/docs/cloud-messaging/ios/certs">Provision APNs SSL Certificates</a>.
-</p>
-
-<h4>Authentication</h4>
-<p>
-  Follow the Firebase instructions to setup either <a href="https://firebase.google.com/docs/auth/ios/password-auth">password</a> or <a href="https://firebase.google.com/docs/auth/ios/google-signin">Google</a> authentication. If you decide to use password authentication, you should at a minimum force the user to set a display name for their profile so other users can recognize them. Updating the user profile is described <a href="https://firebase.google.com/docs/auth/ios/manage-users#update_a_users_profile">here</a>. You could potentially set the email as a display name.
-</p>
-<p>
-  Once you have authenticated the user, you need to extract the authentication token from the response. You need to provide this token as part of the Authentication header for all API endpoints.
-</p>
-
-<h4>Push notifications</h4>
-<p>
-  In order for the backend to send you notifications, you will need to refresh your notification token using the /users/{user-id}/notification-token endpoint whenever it changes. Follow the instructions for iOS <a href="https://firebase.google.com/docs/cloud-messaging/downstream#receiving-messages-on-an-ios-client-app">here</a>. It describes how you can capture the notification token on your app and then describes how you can configure your client to intercept notification messages that the backend sends to you through the push notification system.
-</p>
+In order to authenticate with the backend, you need to follow the instructions to integrate your client with Firebase.
 
 </body>
 

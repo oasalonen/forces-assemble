@@ -150,6 +150,7 @@
 (defresource user-channels [user-id]
   (merge protected-resource json-producer-resource)
   :allowed-methods [:get]
+  :allowed? #(is-request-from-user? % user-id)
   :handle-ok (fn [context]
                (db/get-subscribed-channels user-id)))
 
@@ -216,6 +217,8 @@
   (GET "/api.js" [] (io/resource "api.js"))
   (GET "/custom-account.html" [] (io/resource "custom-account.html"))
   (GET "/google-account.html" [] (io/resource "google-account.html"))
+  (GET "/api.html" [] (io/resource "api.html"))
+  (GET "/firebase.html" [] (io/resource "firebase.html"))
   (GET "/style.css" [] (io/resource "style.css"))
   (ANY (api "/users/:id/notification-token") [id] (user-notification-token id))
   (ANY (api "/users/:id/channels") [id] (user-channels id))
