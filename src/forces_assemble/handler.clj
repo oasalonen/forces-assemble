@@ -21,7 +21,8 @@
             [liberator.dev :refer [wrap-trace]]
             [java-time :as jt]
             [java-time.format :as jt-format]
-            [clj-uuid :as uuid]))
+            [clj-uuid :as uuid]
+            [overtone.at-at :as at]))
 
 ;; HTTP
 (def api-uri-prefix "/api/v1")
@@ -32,6 +33,8 @@
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
 (def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 (def papertrail-events-uri "https://papertrailapp.com/api/v1/events/search.json")
+
+(defonce push-thread-pool (at/mk-pool))
 
 (defn api
   [uri]
@@ -47,11 +50,10 @@
                   :body (or (:body event) "")
                   :sound "default"}})
 
-(defn add-event-to-channel
+(defn push-event
   [channel-id event]
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
-        api-key (str "key=" (or (env :firebase-api-key) ""))
-        added-event (db/add-event-to-channel channel-id event)]
+        api-key (str "key=" (or (env :firebase-api-key) ""))]
     (doall (map (fn [client-token]
                   (log/info (str "Pushing: " client-token))
                   (log/info (str "Message: " (pr-str event)))
@@ -61,7 +63,18 @@
                               :form-params (build-notification event client-token)
                               :connection-manager cm}))
                 (db/get-user-notification-tokens-on-channel channel-id)))
-    (shutdown-manager cm)
+    (shutdown-manager cm)))
+
+(defn add-event-to-channel
+  [channel-id event]
+  (let [push-delay (:delay event)
+        added-event (db/add-event-to-channel channel-id event)]
+    (if push-delay
+      (at/at (+ (* 1000 push-delay) (at/now))
+             #((log/info (str "Pushing after " push-delay " s. delay"))
+               (push-event channel-id added-event))
+             push-thread-pool)
+      (push-event channel-id added-event))
     added-event))
 
 (defn get-server-logs

@@ -14,7 +14,8 @@
                  [liberator "0.14.1"]
                  [com.google.firebase/firebase-server-sdk "3.0.0"]
                  [clojure.java-time "0.2.1"]
-                 [danlentz/clj-uuid "0.1.6"]]
+                 [danlentz/clj-uuid "0.1.6"]
+                 [liftoff/at-at "1.3.0"]]
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.0.3"]]
   :ring {:handler forces-assemble.handler/dev-app}
