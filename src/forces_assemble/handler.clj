@@ -68,11 +68,13 @@
 (defn add-event-to-channel
   [channel-id event]
   (let [push-delay (:delay event)
-        added-event (db/add-event-to-channel channel-id event)]
+        added-event (db/add-event-to-channel channel-id event)
+        local-request-id request-id]
     (if push-delay
       (at/at (+ (* 1000 push-delay) (at/now))
-             #((log/info (str "Pushing after " push-delay " s. delay"))
-               (push-event channel-id added-event))
+             #((binding [request-id local-request-id]
+                 (log/info (str "Pushing after " push-delay " s. delay"))
+                 (push-event channel-id added-event)))
              push-thread-pool)
       (push-event channel-id added-event))
     added-event))
