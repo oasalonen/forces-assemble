@@ -55,7 +55,7 @@
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
         api-key (str "key=" (or (env :firebase-api-key) ""))]
     (doall (map (fn [client-token]
-                  (log/info (str "Pushing: " client-token))
+                  (log/info (str "Pushing to: " client-token))
                   (log/info (str "Message: " (pr-str event)))
                   (http/post firebase-send-uri
                              {:content-type :json
@@ -63,7 +63,9 @@
                               :form-params (build-notification event client-token)
                               :connection-manager cm}))
                 (db/get-user-notification-tokens-on-channel channel-id)))
-    (shutdown-manager cm)))
+    (log/info "Finished pushing events")
+    (shutdown-manager cm)
+    (log/info "Shutdown connection manager")))
 
 (defn add-event-to-channel
   [channel-id event]
