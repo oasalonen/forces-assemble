@@ -46,17 +46,20 @@
     <h3>/channels/[channel-id]/events</h3>
     <h4>POST</h4>
     <div>
-      <p>Add a new event to a channel. This event will be sent as a push notification to all channel subscribers. The event should at a minimum contain a body and a title attribute. You can also add a data payload to the event with custom data, although you should keep the size of the whole event at a maximum of 3kB. The response body will contain the ID of the generated event.
+      <p>Add a new event to a channel. This event will be sent as a push notification to all channel subscribers. The event should at a minimum contain a body and a title attribute. You can also add a data payload to the event with custom data, although you should keep the size of the whole event at a maximum of 3kB. The response body will contain the ID of the generated event. If you add an optional integer delay parameter, the sending of the push notification to clients will be delayed by the number of seconds of the value.
       </p>
       <h5>Request body example</h5>
-      <pre>{
-        "title": "Hello",
-        "body": "World!",
-        "data": {
-        "custom-param1": 123,
-        "something-else": "foo"
-        }
-        }</pre>
+      <pre>
+{
+  "title": "Hello",
+  "body": "World!",
+  "data": {
+    "custom-param1": 123,
+    "something-else": "foo"
+  },
+  "delay": 5
+}
+      </pre>
       <h5>Response body example</h5>
       <pre>{"id": "123"}</pre>
     </div>
@@ -81,15 +84,15 @@
       <p>Fetch data about an event.</p>
       <h5>Response body example</h5>
       <pre>
-        {
-        "id": "abcd123",
-        "channel-id": "def123",
-        "title": "hello",
-        "body": "world",
-        "data": {
-        "foo": "bar"
-        }
-        }
+{
+  "id": "abcd123",
+  "channel-id": "def123",
+  "title": "hello",
+  "body": "world",
+  "data": {
+    "foo": "bar"
+  }
+}
       </pre>
     </div>
     
