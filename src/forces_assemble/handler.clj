@@ -191,6 +191,7 @@
   :allowed-methods [:post]
   :allowed? #(is-request-from-user? % (get-in % [::data :user-id]))
   :post! (fn [context]
+           (log/info (str "Subscribing: " (::data context)))
            (db/subscribe-to-channel channel-id (get-in context [::data :user-id]))))
 
 (defresource channel-subscriber-user [channel-id user-id]
