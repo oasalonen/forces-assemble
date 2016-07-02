@@ -1,5 +1,6 @@
 (ns forces-assemble.db
   (:require [clojure.set]
+            [clojure.string :as cstr]
             [forces-assemble.config :as config]
             [environ.core :refer [env]]
             [monger.core :as mg]
@@ -97,7 +98,7 @@
 
 (defn get-user-notification-tokens-on-channel
   [channel-id]
-  (distinct (map get-user-notification-token (get-channel-subscribers channel-id))))
+  (filter cstr/blank? (distinct (map get-user-notification-token (get-channel-subscribers channel-id)))))
 
 (defn add-event-to-channel
   [channel-id event]
