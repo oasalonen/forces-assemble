@@ -98,7 +98,7 @@
 
 (defn get-user-notification-tokens-on-channel
   [channel-id]
-  (filter cstr/blank? (distinct (map get-user-notification-token (get-channel-subscribers channel-id)))))
+  (remove cstr/blank? (distinct (map get-user-notification-token (get-channel-subscribers channel-id)))))
 
 (defn add-event-to-channel
   [channel-id event]
