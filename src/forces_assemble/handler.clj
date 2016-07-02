@@ -22,7 +22,8 @@
             [java-time :as jt]
             [java-time.format :as jt-format]
             [clj-uuid :as uuid]
-            [overtone.at-at :as at]))
+            [chime :refer [chime-at]]
+            [clj-time.core :as t]))
 
 ;; HTTP
 (def api-uri-prefix "/api/v1")
@@ -33,8 +34,6 @@
 (def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
 (def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
 (def papertrail-events-uri "https://papertrailapp.com/api/v1/events/search.json")
-
-(defonce push-thread-pool (at/mk-pool))
 
 (defn api
   [uri]
@@ -73,11 +72,11 @@
         added-event (db/add-event-to-channel channel-id event)
         local-request-id request-id]
     (if push-delay
-      (at/at (+ (* 1000 push-delay) (at/now))
-             #((binding [request-id local-request-id]
-                 (log/info (str "Pushing after " push-delay " s. delay"))
-                 (push-event channel-id added-event)))
-             push-thread-pool)
+      (chime-at [(-> push-delay t/seconds t/from-now)]
+                (fn [time]
+                  (binding [request-id local-request-id]
+                    (log/info (str "Pushing after " push-delay " s. delay"))
+                    (push-event channel-id added-event))))
       (push-event channel-id added-event))
     added-event))
 
