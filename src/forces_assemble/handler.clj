@@ -10,91 +10,33 @@
             [ring.logger.protocols :as logger-protocols]
             [environ.core :refer [env]]
             [clj-http.client :as http]
-            [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
             [forces-assemble.http-utils :refer :all]
             [forces-assemble.auth :as auth]
             [forces-assemble.config :as config]
             [forces-assemble.db :as db]
             [forces-assemble.logging :as logging]
-            [forces-assemble.context :refer [request-id]]
+            [forces-assemble.context :refer [*request-id*]]
+            [forces-assemble.push :as push]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]
             [java-time :as jt]
             [java-time.format :as jt-format]
-            [clj-uuid :as uuid]
-            [chime :refer [chime-at]]
-            [clj-time.core :as t]))
+            [clj-uuid :as uuid]))
 
 ;; HTTP
 (def api-uri-prefix "/api/v1")
-(def http-config-keys [:firebase-api-key
-                       :papertrail-api-token])
-(def http-configuration-ok? (config/configuration-ok? http-config-keys *ns*))
-
-(def firebase-send-uri "https://fcm.googleapis.com/fcm/send")
-(def debug-client-token "dHfG35KW8yA:APA91bGFFLRyvqzK6mUYK8DBQloGit9Uq3SZ0VeLq0lP80cCiPYtk1huM1Ls12zbU8nJK9Ag0NJS-3FEJ3pkbX0gMHzHvnbvEXyvIUUkg4aLYBE4rwSuJZiZC6_M-25Ozw119C2N7UE0")
+(def http-config-keys [:papertrail-api-token])
+(def http-config-ok? (config/configuration-ok? http-config-keys *ns*))
 (def papertrail-events-uri "https://papertrailapp.com/api/v1/events/search.json")
 
 (defn api
   [uri]
   (str api-uri-prefix uri))
 
-(defn build-notification
-  [event client]
-  (let [title (:title event)
-        body (:body event)
-        notification {:to client
-                      :priority "high"
-                      :collapse_key (:id event)
-                      :data (or (:data event) {})
-                      :notification {:title (or title "")
-                                     :body (or body "")
-                                     :sound "default"}}]
-    (if (every? cstr/blank? [title body])
-      (dissoc notification :notification)
-      notification)))
-
-(defn handle-push-response
-  [response]
-  (let [body (parse-json-body (:body response))]
-    (cond
-      (> (:failure body) 0) (log/error (str "Push failed: "
-                                            (:status response) " "
-                                            (:error (first (:results body)))) )
-      (> (:success body) 0) (log/info "Successfully pushed event")
-      :else (log/info "No events pushed"))))
-
-(defn push-event
-  [channel-id event]
-  (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
-        api-key (str "key=" (or (env :firebase-api-key) ""))]
-    (doall (map (fn [client-token]
-                  (log/info (str "Pushing to: " client-token))
-                  (log/info (str "Message: " (pr-str event)))
-                  (try
-                    (handle-push-response (http/post firebase-send-uri
-                                                     {:content-type :json
-                                                      :headers {"Authorization" api-key}
-                                                      :form-params (build-notification event client-token)
-                                                      :connection-manager cm}))
-                    (catch Exception e
-                      (log/error e "Push exception"))))
-                (db/get-user-notification-tokens-on-channel channel-id)))
-    (log/info "Finished pushing events")
-    (shutdown-manager cm)))
-
 (defn add-event-to-channel
   [channel-id event]
-  (let [push-delay (:delay event)
-        added-event (db/add-event-to-channel channel-id event)
-        local-request-id request-id]
-    (if push-delay
-      (chime-at [(-> push-delay t/seconds t/from-now)]
-                (fn [time]
-                  (binding [request-id local-request-id]
-                    (log/info (str "Pushing after " push-delay " s. delay"))
-                    (push-event channel-id added-event))))
-      (push-event channel-id added-event))
+  (let [added-event (db/add-event-to-channel channel-id event)]
+    (push/push-event channel-id added-event (:delay event))
     added-event))
 
 (defn get-server-logs
@@ -268,7 +210,7 @@
 (defn wrap-request-id
   [handler]
   (fn [request]
-    (binding [request-id (or (get-in request [:headers "x-request-id"])
+    (binding [*request-id* (or (get-in request [:headers "x-request-id"])
                              (str (uuid/v1)))]
       (handler request))))
 

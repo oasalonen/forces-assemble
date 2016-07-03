@@ -4,7 +4,7 @@
             [ring.logger :as ring-log]
             [ring.logger.protocols :as ring-log-protocols]
             [clojure.string :as cstr]
-            [forces-assemble.context :refer [request-id]]))
+            [forces-assemble.context :refer [*request-id*]]))
 
 (def custom-logging-factory
   (reify log-impl/LoggerFactory
@@ -16,7 +16,7 @@
           true)
         (write!
           [logger level throwable message]
-          (let [output (str "[" request-id "] " message)]
+          (let [output (str "[" *request-id* "] " message)]
             (if (or throwable (some level [:error :warn]))
               (binding [*out* *err*]
                 (println (str output " - " throwable)))
