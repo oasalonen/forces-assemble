@@ -47,8 +47,8 @@
                       :priority "high"
                       :collapse_key (:id event)
                       :data (or (:data event) {})
-                      :notification {:title (or (:title event) "")
-                                     :body (or (:body event) "")
+                      :notification {:title (or title "")
+                                     :body (or body "")
                                      :sound "default"}}]
     (if (every? cstr/blank? [title body])
       (dissoc notification :notification)
