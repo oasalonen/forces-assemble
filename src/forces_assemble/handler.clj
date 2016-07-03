@@ -54,6 +54,16 @@
       (dissoc notification :notification)
       notification)))
 
+(defn handle-push-response
+  [response]
+  (let [body (parse-json-body (:body response))]
+    (cond
+      (> (:failure body) 0) (log/error (str "Push failed: "
+                                            (:status response) " "
+                                            (:error (first (:results body)))) )
+      (> (:success body) 0) (log/info "Successfully pushed event")
+      :else (log/info "No events pushed"))))
+
 (defn push-event
   [channel-id event]
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
@@ -61,15 +71,17 @@
     (doall (map (fn [client-token]
                   (log/info (str "Pushing to: " client-token))
                   (log/info (str "Message: " (pr-str event)))
-                  (http/post firebase-send-uri
-                             {:content-type :json
-                              :headers {"Authorization" api-key}
-                              :form-params (build-notification event client-token)
-                              :connection-manager cm}))
+                  (try
+                    (handle-push-response (http/post firebase-send-uri
+                                                     {:content-type :json
+                                                      :headers {"Authorization" api-key}
+                                                      :form-params (build-notification event client-token)
+                                                      :connection-manager cm}))
+                    (catch Exception e
+                      (log/error e "Push exception"))))
                 (db/get-user-notification-tokens-on-channel channel-id)))
     (log/info "Finished pushing events")
-    (shutdown-manager cm)
-    (log/info "Shutdown connection manager")))
+    (shutdown-manager cm)))
 
 (defn add-event-to-channel
   [channel-id event]
