@@ -41,13 +41,18 @@
 
 (defn build-notification
   [event client]
-  {:to client
-   :priority "high"
-   :collapse_key (:id event)
-   :data (or (:data event) {})
-   :notification {:title (or (:title event) "")
-                  :body (or (:body event) "")
-                  :sound "default"}})
+  (let [title (:title event)
+        body (:body event)
+        notification {:to client
+                      :priority "high"
+                      :collapse_key (:id event)
+                      :data (or (:data event) {})
+                      :notification {:title (or (:title event) "")
+                                     :body (or (:body event) "")
+                                     :sound "default"}}]
+    (if (every? cstr/blank? [title body])
+      (dissoc notification :notification)
+      notification)))
 
 (defn push-event
   [channel-id event]
