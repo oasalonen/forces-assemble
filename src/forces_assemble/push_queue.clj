@@ -58,7 +58,9 @@
 
 (defn- start-consumer
   [ch queue-name]
-  (lq/declare ch queue-name {:exclusive false :auto-delete true})
+  (lq/declare ch queue-name {:exclusive false
+                             :auto-delete false
+                             :durable true})
   (lc/subscribe ch queue-name message-handler {:auto-ack true}))
 
 (defn -main
