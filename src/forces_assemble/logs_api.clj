@@ -1,4 +1,4 @@
-(ns forces-assemble.logsy-api
+(ns forces-assemble.logs-api
   (:require [clojure.java.io :as io]
             [clojure.string :as cstr]
             [clojure.tools.logging :as log]
