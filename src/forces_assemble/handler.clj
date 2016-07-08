@@ -15,7 +15,7 @@
             [forces-assemble.config :as config]
             [forces-assemble.db :as db]
             [forces-assemble.logging :as logging]
-            [forces-assemble.context :refer [*request-id*]]
+            [forces-assemble.context :refer [bind *request-id*]]
             [forces-assemble.push :as push]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]
@@ -210,8 +210,8 @@
 (defn wrap-request-id
   [handler]
   (fn [request]
-    (binding [*request-id* (or (get-in request [:headers "x-request-id"])
-                             (str (uuid/v1)))]
+    (bind {:request-id (or (get-in request [:headers "x-request-id"])
+                           (str (uuid/v1)))}
       (handler request))))
 
 (def app

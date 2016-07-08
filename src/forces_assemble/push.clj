@@ -3,7 +3,7 @@
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
             [forces-assemble.config :as config]
-            [forces-assemble.context :refer [*request-id*]]
+            [forces-assemble.context :refer [fn-rebind *request-id*]]
             [forces-assemble.db :as db]
             [forces-assemble.http-utils :refer :all]
             [clj-http.client :as http]
@@ -37,7 +37,7 @@
     (cond
       (> (:failure body) 0) (log/error (str "Push failed: "
                                             (:status response) " "
-                                            (:error (first (:results body)))) )
+                                            (-> body :results first :error)) )
       (> (:success body) 0) (log/info "Successfully pushed event")
       :else (log/info "No events pushed"))))
 
@@ -62,12 +62,10 @@
 
 (defn push-event
   [channel-id event & [delay]]
-  (let [local-request-id *request-id*]
-    (if delay
-      (do
-        (log/info (str "Pushing after " delay " s. delay"))
-        (chime-at [(-> delay t/seconds t/from-now)]
-                  (fn [time]
-                    (binding [*request-id* local-request-id]
-                      (push-event-over-http channel-id event)))))
-      (push-event-over-http channel-id event))))
+  (if delay
+    (do
+      (log/info (str "Pushing after " delay " s. delay"))
+      (chime-at [(-> delay t/seconds t/from-now)]
+                (fn-rebind [time]
+                 (push-event-over-http channel-id event))))
+    (push-event-over-http channel-id event)))
