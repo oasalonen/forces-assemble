@@ -15,7 +15,7 @@
             [forces-assemble.logging :as logging]
             [forces-assemble.logs-api :as logs-api]
             [forces-assemble.context :refer [bind *request-id*]]
-            [forces-assemble.push :as push]
+            [forces-assemble.push-queue :as push-queue]
             [liberator.core :refer [defresource]]
             [liberator.dev :refer [wrap-trace]]
             [clj-uuid :as uuid]))
@@ -78,11 +78,13 @@
                                           {:user-id (get-in context [::auth :user-id])})
                  event (db/add-event-to-channel channel-id event-with-author)
                  event-id (:id event)]
-             (push/push-event channel-id event (:delay event-with-author))
-            {:location (build-entry-url context
-                                        "/events"
-                                        event-id)
-             ::created {:id event-id}}))
+             (push-queue/enqueue channel-id
+                                 event-id
+                                 (:delay event-with-author))
+             {:location (build-entry-url context
+                                         "/events"
+                                         event-id)
+              ::created {:id event-id}}))
   :handle-created #(::created %))
 
 (defresource channel-subscribers [channel-id]
