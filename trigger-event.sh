@@ -8,7 +8,7 @@ fi
 
 AUTH_TOKEN=$1
 SERVER_URL="https://${DOMAIN}/api/v1/channels/ch1/events"
-EVENT="{\"title\":\"Debug event\", \"body\":\"curl says hello\", \"malicious\":\"boo!\", \"data\": {\"foo\": \"bar\"}}"
+EVENT="{\"delay\":2, \"title\":\"Debug event\", \"body\":\"curl says hello\", \"malicious\":\"boo!\", \"data\": {\"foo\": \"bar\"}}"
 echo "Auth token:" $AUTH_TOKEN
 echo "Event:" $EVENT
 echo "Sending event to:" $SERVER_URL

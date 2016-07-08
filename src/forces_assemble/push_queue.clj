@@ -57,7 +57,6 @@
       (push/push-event channel-id event delay))))
 
 (defn- start-consumer
-  "Starts a consumer in a separate thread"
   [ch queue-name]
   (lq/declare ch queue-name {:exclusive false :auto-delete true})
   (lc/subscribe ch queue-name message-handler {:auto-ack true}))
@@ -68,8 +67,4 @@
         ch    (lch/open conn)]
     (log/info (format "Push consumer connected. Channel id: %d" (.getChannelNumber ch)))
     (start-consumer ch queue-name)
-    ;(Thread/sleep 5000)
-    ;(println "[main] Disconnecting...")
-    ;(rmq/close ch)
-    ;(rmq/close conn)
     (.addShutdownHook (Runtime/getRuntime) (Thread. #(do (rmq/close ch) (rmq/close conn))))))

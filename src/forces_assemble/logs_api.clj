@@ -19,7 +19,7 @@
 
 (defn get-server-logs
   [& {:keys [query min-time min-id] :or {query nil min-time nil min-id nil}}]
-  (let [query (str "program:(app/web.1)" (when query (str " " query)))
+  (let [query (str "program:(app/web.1 app/worker.1)" (when query (str " " query)))
         min-time (or min-time (.getEpochSecond (jt/minus (jt/instant) (jt/hours 1))))]
     (log/info (str "Querying server logs for \"" query "\" occurring after " min-time " with min-id " min-id))
     (http/get papertrail-events-uri
