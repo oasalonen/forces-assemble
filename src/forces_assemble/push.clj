@@ -1,5 +1,6 @@
 (ns forces-assemble.push
-  (:require [clojure.string :as cstr]
+  (:require [clojure.core.async :refer [>!!]]
+            [clojure.string :as cstr]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
             [forces-assemble.config :as config]
@@ -35,37 +36,43 @@
   [response]
   (let [body (parse-json-body (:body response))]
     (cond
-      (> (:failure body) 0) (log/error (str "Push failed: "
-                                            (:status response) " "
-                                            (-> body :results first :error)) )
-      (> (:success body) 0) (log/info "Successfully pushed event")
-      :else (log/info "No events pushed"))))
+      (> (:failure body) 0) (do (log/error (str "Push failed: "
+                                                (:status response) " "
+                                                (-> body :results first :error)))
+                                {:success? (< (:status response) 500)})
+      (> (:success body) 0) (do (log/info "Successfully pushed event")
+                                {:success? true})
+      :else (do (log/info "No events pushed")
+                {:success? true}))))
 
 (defn- push-event-over-http
   [channel-id event]
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
-        api-key (str "key=" (or (env :firebase-api-key) ""))]
-    (doall (map (fn [client-token]
-                  (log/info (str "Pushing to: " client-token))
-                  (log/info (str "Message: " (pr-str event)))
-                  (try
-                    (handle-push-response (http/post firebase-send-uri
-                                                     {:content-type :json
-                                                      :headers {"Authorization" api-key}
-                                                      :form-params (build-notification event client-token)
-                                                      :connection-manager cm}))
-                    (catch Exception e
-                      (log/error e "Push exception"))))
-                (db/get-user-notification-tokens-on-channel channel-id)))
+        api-key (str "key=" (or (env :firebase-api-key) ""))
+        results (doall (map (fn [client-token]
+                              (log/info (str "Pushing to: " client-token))
+                              (log/info (str "Message: " (pr-str event)))
+                              (try
+                                (handle-push-response (http/post firebase-send-uri
+                                                                 {:content-type :json
+                                                                  :headers {"Authorization" api-key}
+                                                                  :form-params (build-notification event client-token)
+                                                                  :connection-manager cm
+                                                                  :conn-timeout 5}))
+                                (catch Exception e
+                                  (log/error e "Push exception")
+                                  {:success false})))
+                            (db/get-user-notification-tokens-on-channel channel-id)))]
     (log/info "Finished pushing events")
-    (shutdown-manager cm)))
+    (shutdown-manager cm)
+    (reduce #(identity {:success? (and (:success? %1) (:success? %2))})
+            {:success? true}
+            results)))
 
 (defn push-event
-  [channel-id event & [delay]]
-  (if delay
-    (do
-      (log/info (str "Pushing after " delay " s. delay"))
-      (chime-at [(-> delay t/seconds t/from-now)]
-                (fn-rebind [time]
-                 (push-event-over-http channel-id event))))
-    (push-event-over-http channel-id event)))
+  [channel-id event delay result-channel]
+  (log/info (str "Pushing after " delay " s. delay"))
+  (chime-at [(-> delay t/seconds t/from-now)]
+            (fn-rebind [time]
+              (let [result (push-event-over-http channel-id event)]
+                (>!! result-channel result)))))

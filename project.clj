@@ -16,7 +16,8 @@
                  [com.google.firebase/firebase-server-sdk "3.0.0"]
                  [clojure.java-time "0.2.1"]
                  [danlentz/clj-uuid "0.1.6"]
-                 [jarohen/chime "0.1.9"]]
+                 [jarohen/chime "0.1.9"]
+                 [org.clojure/math.numeric-tower "0.0.4"]]
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.0.3"]]
   :ring {:handler forces-assemble.handler/dev-app}
