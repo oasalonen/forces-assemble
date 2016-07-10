@@ -1,8 +1,6 @@
 (ns forces-assemble.push-queue
   (:gen-class)
   (:require [cheshire.core :as che]
-            [chime :refer [chime-at]]
-            [clj-time.core :as t]
             [clojure.core.async :refer [<! chan go] :as async]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
@@ -62,7 +60,7 @@
                   {:content-type "application/json"
                    :type message-type
                    :correlation-id *request-id*
-                   :headers (get-retry-headers 3)
+                   :headers (get-retry-headers 8)
                    })
       (finally
         (rmq/close ch)

@@ -8,9 +8,7 @@
             [forces-assemble.db :as db]
             [forces-assemble.http-utils :refer :all]
             [clj-http.client :as http]
-            [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]
-            [chime :refer [chime-at]]
-            [clj-time.core :as t]))
+            [clj-http.conn-mgr :refer [make-reusable-conn-manager shutdown-manager]]))
 
 (def push-config-keys [:firebase-api-key])
 (def push-config-ok? (config/configuration-ok? push-config-keys *ns*))
