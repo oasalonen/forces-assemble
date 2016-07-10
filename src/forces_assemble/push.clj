@@ -45,7 +45,7 @@
       :else (do (log/info "No events pushed")
                 {:success? true}))))
 
-(defn- push-event-over-http
+(defn push-event
   [channel-id event]
   (let [cm (make-reusable-conn-manager {:threads 4 :timeout 10 :default-per-route 5})
         api-key (str "key=" (or (env :firebase-api-key) ""))
@@ -68,11 +68,3 @@
     (reduce #(identity {:success? (and (:success? %1) (:success? %2))})
             {:success? true}
             results)))
-
-(defn push-event
-  [channel-id event delay result-channel]
-  (log/info (str "Pushing after " delay " s. delay"))
-  (chime-at [(-> delay t/seconds t/from-now)]
-            (fn-rebind [time]
-              (let [result (push-event-over-http channel-id event)]
-                (>!! result-channel result)))))

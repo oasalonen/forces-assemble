@@ -3,7 +3,7 @@
   (:require [cheshire.core :as che]
             [chime :refer [chime-at]]
             [clj-time.core :as t]
-            [clojure.core.async :refer [<! chan go]]
+            [clojure.core.async :refer [<! chan go] :as async]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
@@ -26,6 +26,11 @@
 (def message-type "push.event")
 (def queue-name "push")
 (def dead-letter-queue-name "dead-letter")
+
+(defmacro go-timeout
+  [timeout & statements]
+  `(go (<! (async/timeout ~timeout))
+       ~@statements))
 
 (defn- get-retry-headers
   [max-retries]
@@ -63,18 +68,17 @@
         (rmq/close ch)
         (rmq/close conn)))))
 
-(defn- requeue
+(defn- requeue-dead-letter
   [ch {:keys [correlation-id] :as meta} ^bytes payload]
   (if-let [headers (get-next-retry-headers (:headers meta))]
     (let [delay (get-retry-delay-seconds headers)]
       (log/info (format "Retrying message in %s seconds..." delay))
-      (chime-at [(-> delay t/seconds t/from-now)]
-                (bind {:request-id *request-id*}
-                      (lb/publish ch
-                                  default-exchange-name
-                                  queue-name
-                                  payload
-                                  (assoc meta :headers headers)))))
+      (go-timeout (* delay 1000)
+                  (lb/publish ch
+                              default-exchange-name
+                              (.toString (get (first (get headers "x-death")) "queue"))
+                              payload
+                              (assoc meta :headers headers))))
     (log/info "Retry limit reached")))
 
 (defn- message-handler
@@ -90,20 +94,18 @@
           channel-id (:channel-id payload)
           event-id (:id payload)
           delay (:delay payload)
-          event (db/get-event event-id)
-          result-channel (chan)]
-      (push/push-event channel-id event delay result-channel)
-      (go
-        (let [result (<! result-channel)]
-          (if (:success? result)
-            (lb/ack ch delivery-tag false)
-            (lb/reject ch delivery-tag false)))))))
+          event (db/get-event event-id)]
+      (log/info (format "Pushing after %s s. delay" delay))
+      (go-timeout (* delay 1000)
+                  (if (:success? (push/push-event channel-id event))
+                    (lb/ack ch delivery-tag false)
+                    (lb/reject ch delivery-tag false))))))
 
 (defn- dead-letter-handler
   [ch {:keys [delivery-tag correlation-id] :as meta} ^bytes payload]
   (bind {:request-id correlation-id}
     (log/info (str "Dead letter: " meta))
-    (requeue ch meta payload)))
+    (requeue-dead-letter ch meta payload)))
 
 (defn- start-consumer
   [ch queue-name]
