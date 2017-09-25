@@ -1,6 +1,6 @@
 # forces-assemble
 
-A publish-subscribe-like backend system where events are published using a REST endpoint and events are published through push notifications over Firebase.
+A publish-subscribe-like backend system where events are published using a REST endpoint and events are consumed through push notifications over Firebase.
 
 ## Prerequisites
 
